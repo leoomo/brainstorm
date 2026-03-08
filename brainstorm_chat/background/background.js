@@ -278,7 +278,8 @@ async function callAnthropic(model, systemPrompt, userPrompt) {
 
 // DeepSeek API 调用
 async function callDeepSeek(model, systemPrompt, userPrompt) {
-  const endpoint = model.endpoint || 'https://api.deepseek.com/v1/chat/completions';
+  // DeepSeek 使用 OpenAI 兼容格式，默认端点不带 /v1
+  const endpoint = model.endpoint || 'https://api.deepseek.com/chat/completions';
   const modelName = model.model || 'deepseek-chat';
 
   const response = await fetch(endpoint, {
@@ -293,13 +294,23 @@ async function callDeepSeek(model, systemPrompt, userPrompt) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.7
+      temperature: 0.7,
+      stream: false
     })
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `API 请求失败: ${response.status}`);
+    const errorText = await response.text();
+    console.error('DeepSeek API 错误:', response.status, errorText);
+    try {
+      const error = JSON.parse(errorText);
+      throw new Error(error.message || `API 请求失败: ${response.status}`);
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        throw new Error(`API 请求失败: ${response.status} - ${errorText.substring(0, 100)}`);
+      }
+      throw e;
+    }
   }
 
   const data = await response.json();

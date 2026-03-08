@@ -935,7 +935,7 @@
   const DEFAULT_ENDPOINTS = {
     'openai': 'https://api.openai.com/v1',
     'anthropic': 'https://api.anthropic.com',
-    'deepseek': 'https://api.deepseek.com/v1',
+    'deepseek': 'https://api.deepseek.com',
     'qwen': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     'glm': 'https://open.bigmodel.cn/api/paas/v4',
     'moonshot': 'https://api.moonshot.cn/v1',

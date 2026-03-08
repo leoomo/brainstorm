@@ -1,0 +1,35 @@
+AI 讨论助手 Chrome 插件开发进度
+
+=== 2026-03-02 ===
+
+Task #1: 创建 Chrome 插件基础结构
+- manifest.json ✓
+- popup/popup.html ✓
+- styles/main.css ✓
+- popup/popup.js ✓
+- background/background.js ✓
+- icons/icon.svg ✓
+
+Task #2: 实现 Popup 主界面
+- (进行中)
+
+Task #3: 实现 API 配置管理
+- (待开始)
+
+Task #4: 实现讨论引擎核心逻辑
+- (待开始)
+
+Task #5: 实现流式输出功能
+- (待开始)
+
+Task #6: 实现文档生成功能
+- (待开始)
+
+Task #7: 实现历史管理功能
+- (待开始)
+
+Task #8: 实现导出功能
+- (待开始)
+
+Task #9: 测试和验证所有功能
+- (待开始)
