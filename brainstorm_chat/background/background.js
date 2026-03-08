@@ -279,7 +279,12 @@ async function callAnthropic(model, systemPrompt, userPrompt) {
 // DeepSeek API 调用
 async function callDeepSeek(model, systemPrompt, userPrompt) {
   // DeepSeek 使用 OpenAI 兼容格式，默认端点不带 /v1
-  const endpoint = model.endpoint || 'https://api.deepseek.com/chat/completions';
+  // 兼容处理：旧配置可能保存了错误的 endpoint
+  let endpoint = model.endpoint;
+  if (!endpoint || endpoint.includes('/v1/')) {
+    // 修正错误的 endpoint
+    endpoint = 'https://api.deepseek.com/chat/completions';
+  }
   const modelName = model.model || 'deepseek-chat';
 
   const response = await fetch(endpoint, {
