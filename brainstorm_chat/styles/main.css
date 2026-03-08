@@ -1818,10 +1818,15 @@ bottom-panel {
 }
 
 .bottom-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: var(--card-bg);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
+  z-index: 100;
 }
 
 .bottom-panel[data-state="collapsed"] {

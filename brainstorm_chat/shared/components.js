@@ -362,6 +362,8 @@ class BottomPanel extends HTMLElement {
   }
 
   connectedCallback() {
+    // 确保初始状态正确设置
+    this.setAttribute('data-state', this.state);
     this.render();
   }
 
