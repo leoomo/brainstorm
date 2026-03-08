@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 讨论助手</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <script src="marked.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- 主界面 -->
+    <div id="main-view" class="view active">
+      <header class="header">
+        <h1>🤖 AI 讨论助手</h1>
+        <button id="theme-toggle" class="theme-toggle" title="切换主题">
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </header>
+
+      <main class="main-content">
+        <!-- 需求输入 -->
+        <div class="form-group">
+          <label for="requirement-input">需求描述</label>
+          <textarea
+            id="requirement-input"
+            placeholder="请描述你的产品需求..."
+            rows="5"
+          ></textarea>
+        </div>
+
+        <!-- 讨论模式选择 -->
+        <div class="form-group">
+          <label>
+            讨论模式（可多选，按顺序执行）
+            <span id="mode-count" class="selection-badge" style="display: none;">0</span>
+          </label>
+          <div class="mode-selector">
+            <label class="radio-card">
+              <input type="checkbox" name="mode" value="round-table" checked>
+              <span class="radio-label">1. 圆桌会议</span>
+              <span class="radio-desc">按顺序轮流补充观点</span>
+            </label>
+            <label class="radio-card">
+              <input type="checkbox" name="mode" value="brainstorm">
+              <span class="radio-label">2. 头脑风暴</span>
+              <span class="radio-desc">同时生成，综合汇总</span>
+            </label>
+            <label class="radio-card">
+              <input type="checkbox" name="mode" value="debate">
+              <span class="radio-label">3. 辩论评审</span>
+              <span class="radio-desc">互相质疑，综合意见</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 参与模型选择 -->
+        <div class="form-group">
+          <label>
+            参与模型
+            <span id="model-count" class="selection-badge" style="display: none;">0</span>
+          </label>
+          <div id="model-list" class="model-list">
+            <!-- 动态加载 -->
+          </div>
+        </div>
+
+        <!-- 开始讨论按钮 -->
+        <button id="start-btn" class="btn btn-primary btn-full" disabled>
+          开始讨论
+        </button>
+      </main>
+
+      <footer class="footer">
+        <button id="config-btn" class="btn btn-secondary">⚙ 配置</button>
+        <button id="history-btn" class="btn btn-secondary">📜 历史</button>
+      </footer>
+    </div>
+
+    <!-- 讨论界面 -->
+    <div id="discussion-view" class="view">
+      <header class="header">
+        <button id="back-btn" class="btn btn-icon">← 返回</button>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+          <h2>讨论中...</h2>
+          <div id="model-status" class="model-status">
+            <span class="model-status-dot"></span>
+            <span class="model-status-text">等待开始</span>
+          </div>
+        </div>
+        <button id="export-btn" class="btn btn-icon" disabled>📥 导出</button>
+      </header>
+
+      <main class="main-content discussion-content">
+        <div id="round-indicator" class="round-indicator">Round 1/3</div>
+        <div id="discussion-messages" class="messages">
+          <!-- 动态加载讨论内容 -->
+        </div>
+      </main>
+
+      <footer class="footer">
+        <button id="continue-btn" class="btn btn-primary" disabled>继续讨论</button>
+        <button id="finish-btn" class="btn btn-secondary">生成文档</button>
+      </footer>
+    </div>
+
+    <!-- 配置界面 -->
+    <div id="config-view" class="view">
+      <header class="header">
+        <button id="config-back-btn" class="btn btn-icon">← 返回</button>
+        <h2>⚙ API 配置</h2>
+      </header>
+
+      <main class="main-content">
+        <button id="add-model-btn" class="btn btn-secondary btn-full">+ 添加模型</button>
+
+        <div id="config-list" class="config-list">
+          <!-- 动态加载配置 -->
+        </div>
+      </main>
+    </div>
+
+    <!-- 配置弹窗 -->
+    <div id="config-modal" class="modal">
+      <div class="modal-content">
+        <h3 id="modal-title">添加模型</h3>
+        <form id="config-form">
+          <input type="hidden" id="config-id">
+
+          <div class="form-group">
+            <label for="config-name">模型名称</label>
+            <input type="text" id="config-name" placeholder="如：GPT-4" required>
+          </div>
+
+          <div class="form-group">
+            <label for="config-provider">API 提供商</label>
+            <select id="config-provider" required>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="qwen">通义千问 (阿里)</option>
+              <option value="ernie">文心一言 (百度)</option>
+              <option value="glm">GLM (智谱)</option>
+              <option value="moonshot">Moonshot (Kimi)</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="config-model">模型名称</label>
+            <input type="text" id="config-model" placeholder="如: gpt-4o (留空使用默认)">
+          </div>
+
+          <div class="form-group">
+            <label for="config-endpoint">API 端点 (可选)</label>
+            <input type="url" id="config-endpoint" placeholder="留空使用默认端点">
+          </div>
+
+          <div class="form-group">
+            <label for="config-key">API Key</label>
+            <input type="password" id="config-key" placeholder="请输入 API Key" required>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="config-enabled" checked>
+              启用此模型
+            </label>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="cancel-config-btn" class="btn btn-secondary">取消</button>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 历史界面 -->
+    <div id="history-view" class="view">
+      <header class="header">
+        <button id="history-back-btn" class="btn btn-icon">← 返回</button>
+        <h2>📜 讨论历史</h2>
+      </header>
+
+      <main class="main-content">
+        <div id="history-list" class="history-list">
+          <!-- 动态加载历史 -->
+        </div>
+      </main>
+    </div>
+
+    <!-- 文档预览界面 -->
+    <div id="document-view" class="view">
+      <header class="header">
+        <button id="doc-back-btn" class="btn btn-icon">← 返回</button>
+        <h2>📄 产品文档</h2>
+        <button id="doc-export-btn" class="btn btn-icon">📥 导出</button>
+      </header>
+
+      <main class="main-content">
+        <pre id="document-content" class="markdown-content"></pre>
+      </main>
+
+      <footer class="footer">
+        <button id="save-doc-btn" class="btn btn-primary">保存到历史</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="state.js"></script>
+  <script src="components.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
