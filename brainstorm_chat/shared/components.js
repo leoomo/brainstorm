@@ -436,28 +436,57 @@ class BottomPanel extends HTMLElement {
   // ========== Timeline Methods (v2.0) ==========
 
   /**
-   * 将讨论数据转换为时间线事件
+   * 将讨论数据转换为时间线事件 (v2.1 - 支持完整流程显示)
    */
   generateTimelineEvents(discussion) {
     const events = [];
-    const { models = [], messages = [], currentRound, totalRounds } = discussion;
+    const { models = [], messages = [], currentRound = 1, totalRounds = 3, modes = [], currentModeIndex = 0 } = discussion;
 
-    // 添加模型状态事件
-    models.forEach(model => {
-      events.push({
-        type: 'model-status',
-        timestamp: discussion.updatedAt,
-        modelId: model.modelId,
-        modelName: model.name,
-        status: model.status,
-        progress: model.progress,
-        isHost: model.isHost
-      });
+    // 如果有预存储的时间线事件，优先使用
+    if (discussion.timelineEvents && discussion.timelineEvents.length > 0) {
+      return discussion.timelineEvents;
+    }
+
+    // 添加讨论启动事件
+    events.push({
+      type: 'discussion-start',
+      timestamp: discussion.createdAt,
+      title: discussion.title
     });
 
-    // 添加消息历史事件
+    // 基于消息历史重建时间线
+    let lastMode = null;
+    let lastRound = 0;
+
     messages.forEach(msg => {
       const msgTime = msg.timestamp || discussion.updatedAt;
+      const msgMode = msg.mode;
+      const msgRound = msg.round;
+      const msgModeIndex = msg.modeIndex !== undefined ? msg.modeIndex : 0;
+
+      // 模式切换事件
+      if (msgMode && msgMode !== lastMode) {
+        events.push({
+          type: 'mode-start',
+          timestamp: msgTime,
+          mode: msgMode,
+          modeIndex: msgModeIndex,
+          totalModes: modes.length || 1
+        });
+        lastMode = msgMode;
+        lastRound = 0; // 重置轮次
+      }
+
+      // 轮次开始事件
+      if (msgRound && msgRound !== lastRound) {
+        events.push({
+          type: 'round-start',
+          timestamp: msgTime,
+          round: msgRound,
+          mode: msgMode || 'round-table'
+        });
+        lastRound = msgRound;
+      }
 
       // 模型响应
       if (msg.responses) {
@@ -467,7 +496,8 @@ class BottomPanel extends HTMLElement {
             timestamp: msgTime,
             modelName: r.model,
             content: r.content,
-            round: msg.round
+            round: msg.round,
+            mode: msgMode
           });
         });
       }
@@ -480,22 +510,106 @@ class BottomPanel extends HTMLElement {
           modelName: msg.hostSummary.model,
           content: msg.hostSummary.content,
           stage: msg.hostSummary.stage,
-          round: msg.round
+          round: msg.round,
+          mode: msgMode
         });
       }
     });
 
-    return events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    // 添加当前模型状态
+    models.forEach(model => {
+      // 只添加正在运行或有特殊状态的模型
+      if (model.status === 'running' || model.progress > 0) {
+        events.push({
+          type: 'model-status',
+          timestamp: discussion.updatedAt,
+          modelId: model.modelId,
+          modelName: model.name,
+          status: model.status,
+          progress: model.progress,
+          isHost: model.isHost
+        });
+      }
+    });
+
+    return events.sort((a, b) => {
+      const timeA = new Date(a.timestamp);
+      const timeB = new Date(b.timestamp);
+      // 如果时间相同，按类型排序：mode-start < round-start < model-response < host-summary < model-status
+      if (timeA.getTime() === timeB.getTime()) {
+        const typeOrder = {
+          'discussion-start': 0,
+          'mode-start': 1,
+          'round-start': 2,
+          'model-response': 3,
+          'host-summary': 4,
+          'model-status': 5
+        };
+        return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
+      }
+      return timeA - timeB;
+    });
   }
 
   /**
-   * 渲染时间线事件
+   * 渲染时间线事件 (v2.1 - 支持完整流程显示)
    */
   renderTimelineEvent(event) {
     const time = this.formatTime(event.timestamp);
     const typeClass = event.type;
 
     switch (event.type) {
+      case 'discussion-start':
+        return `
+          <div class="tl-event discussion-start">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor system">SYS</span>
+            <span class="tl-action">Discussion started</span>
+          </div>
+        `;
+
+      case 'mode-start':
+        return `
+          <div class="tl-event mode-start">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor system">SYS</span>
+            <span class="tl-action mode-label">
+              <span class="mode-icon">${this.getModeIcon(event.mode)}</span>
+              ${this.getModeName(event.mode)} started
+              <span class="mode-progress">(${event.modeIndex + 1}/${event.totalModes})</span>
+            </span>
+          </div>
+        `;
+
+      case 'mode-end':
+        return `
+          <div class="tl-event mode-end">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor system">SYS</span>
+            <span class="tl-action mode-label completed">
+              ${this.getModeName(event.mode)} completed
+            </span>
+          </div>
+        `;
+
+      case 'round-start':
+        return `
+          <div class="tl-event round-start">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor system">SYS</span>
+            <span class="tl-action round-label">Round ${event.round} started</span>
+          </div>
+        `;
+
+      case 'round-end':
+        return `
+          <div class="tl-event round-end">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor system">SYS</span>
+            <span class="tl-action round-label completed">Round ${event.round} completed</span>
+          </div>
+        `;
+
       case 'model-status':
         return `
           <div class="tl-event ${typeClass} ${event.status}">
@@ -534,6 +648,30 @@ class BottomPanel extends HTMLElement {
       default:
         return '';
     }
+  }
+
+  /**
+   * 获取模式图标
+   */
+  getModeIcon(mode) {
+    const icons = {
+      'brainstorm': '💡',
+      'round-table': '🔄',
+      'debate': '⚔️'
+    };
+    return icons[mode] || '📋';
+  }
+
+  /**
+   * 获取模式名称
+   */
+  getModeName(mode) {
+    const names = {
+      'brainstorm': 'Brainstorm',
+      'round-table': 'Round Table',
+      'debate': 'Debate'
+    };
+    return names[mode] || mode;
   }
 
   /**

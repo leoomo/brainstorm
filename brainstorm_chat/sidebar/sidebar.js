@@ -956,6 +956,72 @@
           showToast('主持人汇总完成', 'success');
           break;
 
+        case 'ROUND_START':
+          // 轮次开始 - 更新时间线
+          console.log('[Sidebar] ROUND_START', {
+            discussionId,
+            round: message.round,
+            mode: message.mode
+          });
+          const roundStartDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (roundStartDiscussion) {
+            // 添加时间线事件
+            if (!roundStartDiscussion.timelineEvents) {
+              roundStartDiscussion.timelineEvents = [];
+            }
+            roundStartDiscussion.timelineEvents.push({
+              type: 'round-start',
+              timestamp: new Date().toISOString(),
+              round: message.round,
+              mode: message.mode
+            });
+            // 更新当前轮次
+            roundStartDiscussion.currentRound = message.round;
+            StateManager.saveDiscussions();
+            if (StateManager.state.activeDiscussionId === discussionId) {
+              updateBottomPanelContent();
+            }
+          }
+          break;
+
+        case 'MODE_SWITCH':
+          // 模式切换 - 更新时间线
+          console.log('[Sidebar] MODE_SWITCH', {
+            discussionId,
+            currentMode: message.currentMode,
+            currentModeIndex: message.currentModeIndex
+          });
+          const modeSwitchDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (modeSwitchDiscussion) {
+            // 添加时间线事件
+            if (!modeSwitchDiscussion.timelineEvents) {
+              modeSwitchDiscussion.timelineEvents = [];
+            }
+            // 先添加上一模式结束事件
+            if (modeSwitchDiscussion.timelineEvents.length > 0) {
+              modeSwitchDiscussion.timelineEvents.push({
+                type: 'mode-end',
+                timestamp: new Date().toISOString(),
+                mode: modeSwitchDiscussion.modes[message.currentModeIndex - 1]
+              });
+            }
+            // 添加新模式开始事件
+            modeSwitchDiscussion.timelineEvents.push({
+              type: 'mode-start',
+              timestamp: new Date().toISOString(),
+              mode: message.currentMode,
+              modeIndex: message.currentModeIndex,
+              totalModes: message.totalModes
+            });
+            // 更新当前模式索引
+            modeSwitchDiscussion.currentModeIndex = message.currentModeIndex;
+            StateManager.saveDiscussions();
+            if (StateManager.state.activeDiscussionId === discussionId) {
+              updateBottomPanelContent();
+            }
+          }
+          break;
+
         case 'DISCUSSION_COMPLETED':
           StateManager.updateDiscussionProgress(discussionId, { status: 'completed', progress: 100 });
           renderDashboard();

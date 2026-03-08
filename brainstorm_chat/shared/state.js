@@ -120,6 +120,21 @@ const StateManager = {
       currentRound: 1,
       totalRounds: this.state.maxRounds,
       messages: [],
+      timelineEvents: [
+        // 初始化时间线事件
+        {
+          type: 'discussion-start',
+          timestamp: now,
+          title: this.generateDiscussionTitle(requirement)
+        },
+        {
+          type: 'mode-start',
+          timestamp: now,
+          mode: modesArray[0],
+          modeIndex: 0,
+          totalModes: modesArray.length
+        }
+      ],
       createdAt: now,
       updatedAt: now,
       completedAt: null

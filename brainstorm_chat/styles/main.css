@@ -3135,3 +3135,104 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 [data-theme="dark"] .status-chip.error {
   background: rgba(239, 68, 68, 0.15);
 }
+
+/* ========== Timeline Flow Events (v2.1) ========== */
+
+/* System Actor */
+.tl-actor.system {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 18px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #38BDF8 100%);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+/* Discussion Start Event */
+.tl-event.discussion-start {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0.04) 100%);
+  border-left: 3px solid var(--primary-color);
+}
+
+.tl-event.discussion-start .tl-action {
+  font-weight: 500;
+  color: var(--primary-color);
+}
+
+/* Mode Start Event */
+.tl-event.mode-start {
+  background: rgba(139, 92, 246, 0.06);
+  border-left: 3px solid #8B5CF6;
+  margin-top: 8px;
+}
+
+.tl-event.mode-start:hover {
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.tl-event.mode-start .mode-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: #7C3AED;
+}
+
+.tl-event.mode-start .mode-icon {
+  font-size: 12px;
+}
+
+.tl-event.mode-start .mode-progress {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
+/* Mode End Event */
+.tl-event.mode-end {
+  border-left: 2px solid #A78BFA;
+  opacity: 0.8;
+}
+
+.tl-event.mode-end .mode-label.completed {
+  color: var(--success-color);
+}
+
+/* Round Start Event */
+.tl-event.round-start {
+  background: rgba(16, 185, 129, 0.04);
+  border-left: 2px solid var(--success-color);
+}
+
+.tl-event.round-start .round-label {
+  font-weight: 500;
+  color: #059669;
+}
+
+/* Round End Event */
+.tl-event.round-end {
+  opacity: 0.7;
+}
+
+.tl-event.round-end .round-label.completed {
+  color: var(--text-tertiary);
+}
+
+/* Dark mode adjustments for flow events */
+[data-theme="dark"] .tl-event.mode-start {
+  background: rgba(139, 92, 246, 0.1);
+}
+
+[data-theme="dark"] .tl-event.round-start {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+[data-theme="dark"] .tl-event.discussion-start {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(14, 165, 233, 0.08) 100%);
+}
