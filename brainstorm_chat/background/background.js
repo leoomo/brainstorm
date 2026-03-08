@@ -278,12 +278,14 @@ async function callAnthropic(model, systemPrompt, userPrompt) {
 
 // DeepSeek API 调用
 async function callDeepSeek(model, systemPrompt, userPrompt) {
-  // DeepSeek 使用 OpenAI 兼容格式，默认端点不带 /v1
-  // 兼容处理：旧配置可能保存了错误的 endpoint
+  // DeepSeek 使用 OpenAI 兼容格式，端点应该是 https://api.deepseek.com/chat/completions
+  // 兼容处理：修正任何错误的 endpoint
+  const correctEndpoint = 'https://api.deepseek.com/chat/completions';
   let endpoint = model.endpoint || '';
-  if (!endpoint || endpoint.includes('/v1') || endpoint === 'https://api.deepseek.com/v1') {
-    // 修正错误的 endpoint
-    endpoint = 'https://api.deepseek.com/chat/completions';
+
+  // 如果不是正确的端点，就使用默认的正确端点
+  if (!endpoint || endpoint !== correctEndpoint) {
+    endpoint = correctEndpoint;
     console.log('DeepSeek: 使用修正后的端点', endpoint);
   } else {
     console.log('DeepSeek: 使用配置中的端点', endpoint);
