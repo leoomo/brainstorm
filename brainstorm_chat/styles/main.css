@@ -1817,7 +1817,9 @@ bottom-panel {
   display: block;
 }
 
-.bottom-panel {
+/* 外部 bottom-panel 元素样式 */
+bottom-panel {
+  display: block;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -1825,20 +1827,21 @@ bottom-panel {
   background: var(--card-bg);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, height 0.3s ease;
   z-index: 100;
 }
 
-.bottom-panel[data-state="collapsed"] {
-  transform: translateY(calc(100% - 40px));
+bottom-panel[data-state="collapsed"] {
+  transform: translateY(calc(100% - 48px));
+  height: auto;
 }
 
-.bottom-panel[data-state="expanded"] {
+bottom-panel[data-state="expanded"] {
   transform: translateY(0);
   height: 280px;
 }
 
-.bottom-panel[data-state="fullscreen"] {
+bottom-panel[data-state="fullscreen"] {
   transform: translateY(0);
   height: 100vh;
   position: fixed;
@@ -1847,6 +1850,13 @@ bottom-panel {
   right: 0;
   bottom: 0;
   z-index: 1000;
+}
+
+/* 内部 .bottom-panel div 样式 */
+.bottom-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-header {
