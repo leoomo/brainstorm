@@ -329,7 +329,15 @@ async function callDeepSeek(model, systemPrompt, userPrompt) {
 
 // 通义千问 (Qwen) API 调用
 async function callQwen(model, systemPrompt, userPrompt) {
-  const endpoint = model.endpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+  // 修正错误的 endpoint
+  let endpoint = model.endpoint || '';
+  const correctEndpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+  if (!endpoint || !endpoint.includes('dashscope')) {
+    endpoint = correctEndpoint;
+    console.log('Qwen: 使用修正后的端点', endpoint);
+  } else {
+    console.log('Qwen: 使用配置中的端点', endpoint);
+  }
   const modelName = model.model || 'qwen-plus';
 
   const response = await fetch(endpoint, {

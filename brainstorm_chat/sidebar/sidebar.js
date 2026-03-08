@@ -977,9 +977,17 @@
 
     // DeepSeek 特殊处理
     if (provider === 'deepseek') {
-      // 如果用户没填 endpoint，或填写了错误的，使用正确的
       const correctEndpoint = 'https://api.deepseek.com/chat/completions';
       if (!userEndpoint || userEndpoint.includes('/v1') || userEndpoint === 'https://api.deepseek.com') {
+        return correctEndpoint;
+      }
+      return userEndpoint;
+    }
+
+    // Qwen 特殊处理 - 确保使用正确的端点
+    if (provider === 'qwen') {
+      const correctEndpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+      if (!userEndpoint || !userEndpoint.includes('dashscope')) {
         return correctEndpoint;
       }
       return userEndpoint;
