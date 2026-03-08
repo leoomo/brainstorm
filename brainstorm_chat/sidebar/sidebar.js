@@ -14,6 +14,19 @@
     historyView: document.getElementById('history-view'),
     documentView: document.getElementById('document-view'),
 
+    // 项目管理
+    projectCurrent: document.getElementById('project-current'),
+    projectDropdown: document.getElementById('project-dropdown'),
+    projectList: document.getElementById('project-list'),
+    currentProjectName: document.getElementById('current-project-name'),
+    projectDiscussionCount: document.getElementById('project-discussion-count'),
+    newProjectBtn: document.getElementById('new-project-btn'),
+    deleteProjectBtn: document.getElementById('delete-project-btn'),
+    projectModal: document.getElementById('project-modal'),
+    projectForm: document.getElementById('project-form'),
+    projectNameInput: document.getElementById('project-name-input'),
+    cancelProjectBtn: document.getElementById('cancel-project-btn'),
+
     // 主界面
     requirementInput: document.getElementById('requirement-input'),
     modelList: document.getElementById('model-list'),
@@ -61,6 +74,8 @@
     await loadApiConfigs();
     await loadHistory();
     await StateManager.loadSelectedModels(); // 加载保存的模型选择
+    await StateManager.loadProjects(); // 加载项目
+    initProjectSwitcher(); // 初始化项目切换器
     bindEvents();
     setupMessageListener();
     renderModelList();
@@ -88,6 +103,93 @@
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
+  }
+
+  // ========== 项目管理 ==========
+  function initProjectSwitcher() {
+    renderProjectList();
+    updateProjectDisplay();
+    bindProjectEvents();
+  }
+
+  function bindProjectEvents() {
+    // 点击切换器展开/收起下拉
+    elements.projectCurrent.addEventListener('click', (e) => {
+      e.stopPropagation();
+      elements.projectDropdown.classList.toggle('show');
+    });
+
+    // 点击其他地方关闭下拉
+    document.addEventListener('click', () => {
+      elements.projectDropdown.classList.remove('show');
+    });
+
+    // 新建项目按钮
+    elements.newProjectBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      elements.projectNameInput.value = '';
+      elements.projectModal.classList.add('show');
+      elements.projectNameInput.focus();
+    });
+
+    // 取消项目弹窗
+    elements.cancelProjectBtn.addEventListener('click', () => {
+      elements.projectModal.classList.remove('show');
+    });
+
+    // 提交项目表单
+    elements.projectForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = elements.projectNameInput.value.trim();
+      if (name) {
+        const project = await StateManager.addProject(name);
+        await StateManager.switchProject(project.id);
+        renderProjectList();
+        updateProjectDisplay();
+        elements.projectModal.classList.remove('show');
+      }
+    });
+
+    // 删除项目按钮
+    elements.deleteProjectBtn.addEventListener('click', async () => {
+      const currentProject = StateManager.getCurrentProject();
+      if (currentProject && confirm(`确定要删除项目"${currentProject.name}"吗？该项目的所有讨论将被删除。`)) {
+        await StateManager.deleteProject(currentProject.id);
+        renderProjectList();
+        updateProjectDisplay();
+      }
+    });
+  }
+
+  function renderProjectList() {
+    const projects = StateManager.state.projects;
+    const currentId = StateManager.state.currentProjectId;
+
+    elements.projectList.innerHTML = projects.map(project => `
+      <div class="project-item ${project.id === currentId ? 'active' : ''}" data-id="${project.id}">
+        <span class="project-item-name">${escapeHtml(project.name)}</span>
+        <span class="project-item-count">${project.discussions.length}次</span>
+      </div>
+    `).join('');
+
+    // 绑定点击项目切换
+    elements.projectList.querySelectorAll('.project-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const projectId = item.dataset.id;
+        await StateManager.switchProject(projectId);
+        renderProjectList();
+        updateProjectDisplay();
+        elements.projectDropdown.classList.remove('show');
+      });
+    });
+  }
+
+  function updateProjectDisplay() {
+    const project = StateManager.getCurrentProject();
+    if (project) {
+      elements.currentProjectName.textContent = project.name;
+      elements.projectDiscussionCount.textContent = `${project.discussions.length}次讨论`;
+    }
   }
 
   // 设置消息监听
@@ -443,9 +545,16 @@
       statusText.textContent = '等待模型响应...';
     }
 
+    // 获取当前项目的讨论标题
+    const project = StateManager.getCurrentProject();
+    const discussionCount = project ? project.discussions.length + 1 : 1;
+    const discussionTitle = project
+      ? StateManager.getDiscussionTitle(project.name, discussionCount)
+      : requirement.substring(0, 30) + (requirement.length > 30 ? '...' : '');
+
     state.currentDiscussion = {
       id: generateId(),
-      title: requirement.substring(0, 30) + (requirement.length > 30 ? '...' : ''),
+      title: discussionTitle,
       modes: state.discussionModes,
       currentModeIndex: 0,
       models: state.selectedModels,
@@ -702,9 +811,23 @@
 
   // 保存到历史
   async function saveToHistory() {
+    // 保存到当前项目
+    await StateManager.addDiscussionToProject({
+      title: state.currentDiscussion.title,
+      requirement: state.currentDiscussion.requirement,
+      mode: state.currentDiscussion.modes[0],
+      models: state.currentDiscussion.models,
+      finalDoc: state.currentDiscussion.finalDoc
+    });
+
+    // 更新项目显示
+    updateProjectDisplay();
+
+    // 同时保留到历史（兼容）
     state.history.unshift(state.currentDiscussion);
     await StateManager.saveHistory();
-    showToast('已保存到历史', 'success');
+
+    showToast('已保存到项目', 'success');
   }
 
   // 渲染配置列表

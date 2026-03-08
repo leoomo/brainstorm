@@ -12,7 +12,7 @@
     <!-- 主界面 -->
     <div id="main-view" class="view active">
       <header class="header">
-        <h1>🤖 AI 讨论助手</h1>
+        <h1>AI 讨论助手</h1>
         <button id="theme-toggle" class="theme-toggle" title="切换主题">
           <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -30,6 +30,26 @@
           </svg>
         </button>
       </header>
+
+      <!-- 项目切换器 -->
+        <div class="project-switcher">
+          <div class="project-current" id="project-current">
+            <span class="project-name" id="current-project-name">加载中...</span>
+            <span class="project-count" id="project-discussion-count">0次讨论</span>
+            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div class="project-dropdown" id="project-dropdown">
+            <div class="project-list" id="project-list">
+              <!-- 动态加载项目列表 -->
+            </div>
+            <div class="project-actions">
+              <button class="btn btn-sm btn-secondary" id="new-project-btn">+ 新建项目</button>
+              <button class="btn btn-sm btn-danger" id="delete-project-btn" style="display: none;">删除项目</button>
+            </div>
+          </div>
+        </div>
 
       <main class="main-content">
         <!-- 需求输入 -->
@@ -184,6 +204,23 @@
           <div class="modal-actions">
             <button type="button" id="cancel-config-btn" class="btn btn-secondary">取消</button>
             <button type="submit" class="btn btn-primary">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 项目弹窗 -->
+    <div id="project-modal" class="modal">
+      <div class="modal-content modal-sm">
+        <h3 id="project-modal-title">新建项目</h3>
+        <form id="project-form">
+          <div class="form-group">
+            <label for="project-name-input">项目名称</label>
+            <input type="text" id="project-name-input" placeholder="请输入项目名称" required>
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="cancel-project-btn" class="btn btn-secondary">取消</button>
+            <button type="submit" class="btn btn-primary">确定</button>
           </div>
         </form>
       </div>

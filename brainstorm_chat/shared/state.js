@@ -13,7 +13,9 @@ const StateManager = {
     maxRounds: 3,
     isDiscussing: false,
     messages: [],
-    history: []
+    // 项目管理
+    projects: [],
+    currentProjectId: null
   },
 
   // 订阅者列表
@@ -109,6 +111,134 @@ const StateManager = {
     return new Promise((resolve) => {
       chrome.storage.local.set({ selectedModels: this.state.selectedModels }, resolve);
     });
+  },
+
+  // ========== 项目管理方法 ==========
+
+  // 生成唯一 ID
+  generateId(prefix = 'id') {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  },
+
+  // 加载项目
+  async loadProjects() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['projects', 'currentProjectId'], (result) => {
+        this.state.projects = result.projects || [];
+        this.state.currentProjectId = result.currentProjectId || null;
+
+        // 如果没有项目，自动创建默认项目
+        if (this.state.projects.length === 0) {
+          const defaultProject = this.createProject('默认项目');
+          this.state.projects = [defaultProject];
+          this.state.currentProjectId = defaultProject.id;
+          this.saveProjects();
+        }
+
+        resolve(this.state.projects);
+      });
+    });
+  },
+
+  // 保存项目
+  async saveProjects() {
+    return new Promise((resolve) => {
+      chrome.storage.local.set({
+        projects: this.state.projects,
+        currentProjectId: this.state.currentProjectId
+      }, resolve);
+    });
+  },
+
+  // 创建项目
+  createProject(name) {
+    const now = new Date().toISOString();
+    return {
+      id: this.generateId('proj'),
+      name: name,
+      createdAt: now,
+      updatedAt: now,
+      discussions: []
+    };
+  },
+
+  // 添加项目
+  async addProject(name) {
+    const project = this.createProject(name);
+    this.state.projects.push(project);
+    await this.saveProjects();
+    return project;
+  },
+
+  // 删除项目
+  async deleteProject(projectId) {
+    this.state.projects = this.state.projects.filter(p => p.id !== projectId);
+
+    // 如果删除的是当前项目，切换到第一个
+    if (this.state.currentProjectId === projectId) {
+      this.state.currentProjectId = this.state.projects[0]?.id || null;
+    }
+
+    await this.saveProjects();
+  },
+
+  // 切换当前项目
+  async switchProject(projectId) {
+    this.state.currentProjectId = projectId;
+    await this.saveProjects();
+  },
+
+  // 获取当前项目
+  getCurrentProject() {
+    return this.state.projects.find(p => p.id === this.state.currentProjectId);
+  },
+
+  // 更新项目名称
+  async updateProjectName(projectId, name) {
+    const project = this.state.projects.find(p => p.id === projectId);
+    if (project) {
+      project.name = name;
+      project.updatedAt = new Date().toISOString();
+      await this.saveProjects();
+    }
+  },
+
+  // 添加讨论到当前项目
+  async addDiscussionToProject(discussion) {
+    const project = this.getCurrentProject();
+    if (project) {
+      const projectDiscussion = {
+        id: this.generateId('disc'),
+        ...discussion,
+        createdAt: new Date().toISOString()
+      };
+      project.discussions.push(projectDiscussion);
+      project.updatedAt = new Date().toISOString();
+      await this.saveProjects();
+      return projectDiscussion;
+    }
+    return null;
+  },
+
+  // 获取当前项目的讨论列表
+  getDiscussions() {
+    const project = this.getCurrentProject();
+    return project ? project.discussions : [];
+  },
+
+  // 删除讨论
+  async deleteDiscussion(discussionId) {
+    const project = this.getCurrentProject();
+    if (project) {
+      project.discussions = project.discussions.filter(d => d.id !== discussionId);
+      project.updatedAt = new Date().toISOString();
+      await this.saveProjects();
+    }
+  },
+
+  // 获取讨论标题（自动生成）
+  getDiscussionTitle(projectName, discussionIndex) {
+    return `${projectName} - 第${discussionIndex}次讨论`;
   }
 };
 

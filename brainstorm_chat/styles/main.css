@@ -134,6 +134,122 @@ body {
   color: var(--text-primary);
 }
 
+/* 项目切换器 */
+.project-switcher {
+  position: relative;
+  margin: 0 20px 16px;
+}
+
+.project-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.project-current:hover {
+  border-color: var(--primary-color);
+}
+
+.project-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.dropdown-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.project-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s ease;
+}
+
+.project-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.project-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.project-item:hover {
+  background: var(--hover-bg);
+}
+
+.project-item.active {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(14, 165, 233, 0.15) 100%);
+}
+
+.project-item.active .project-item-name {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.project-item-name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.project-item-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.project-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.project-actions .btn {
+  flex: 1;
+}
+
 /* 主内容区 */
 .main-content {
   flex: 1;
@@ -519,6 +635,11 @@ body {
   cursor: not-allowed;
 }
 
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--primary-color) 0%, #38BDF8 100%);
   color: white;
@@ -890,6 +1011,11 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.25s ease;
+}
+
+.modal-content.modal-sm {
+  max-width: 300px;
+  padding: 20px;
 }
 
 @keyframes slideUp {
