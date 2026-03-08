@@ -2837,15 +2837,17 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   }
 }
 
-/* ========== Timeline Log Styles (v2.0) ========== */
+/* ========== Timeline Log Styles (v2.1 - Log Viewer) ========== */
 
-/* Timeline Container */
+/* Timeline Container - Terminal/Log Style */
 .discussion-timeline {
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-size: 11px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  background: var(--bg-primary);
 }
 
 /* Compact Header */
@@ -2853,7 +2855,7 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-secondary);
 }
@@ -2864,70 +2866,72 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  max-width: 180px;
+  font-size: 10px;
 }
 
 .timeline-meta {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
 .round-badge {
   background: var(--primary-color);
   color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 9px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .progress-mini {
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
+  font-size: 9px;
 }
 
-/* Status Bar */
+/* Status Bar - Compact Single Line */
 .status-bar {
   display: flex;
-  gap: 4px;
-  padding: 6px 12px;
+  gap: 3px;
+  padding: 3px 8px;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-primary);
   overflow-x: auto;
 }
 
 .status-bar::-webkit-scrollbar {
-  height: 4px;
+  height: 2px;
 }
 
 .status-bar::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 2px;
+  border-radius: 1px;
 }
 
 .status-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 4px;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 2px;
   background: var(--bg-tertiary);
   white-space: nowrap;
-  transition: background 0.2s ease;
+  font-size: 9px;
 }
 
 .status-chip.running {
-  background: rgba(14, 165, 233, 0.12);
+  background: rgba(14, 165, 233, 0.1);
 }
 
 .status-chip.completed {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(16, 185, 129, 0.1);
 }
 
 .status-chip.error {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .status-chip.host {
@@ -2936,8 +2940,8 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 }
 
 .chip-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--text-tertiary);
   flex-shrink: 0;
@@ -2961,40 +2965,45 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 }
 
 .chip-name {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
-/* Timeline Log */
+/* Timeline Log - Terminal Style */
 .timeline-log {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 0;
   background: var(--bg-primary);
 }
 
 .timeline-log::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .timeline-log::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
+/* Log Entry - High Density */
 .tl-event {
-  display: grid;
-  grid-template-columns: 56px 72px 1fr auto;
-  gap: 8px;
-  padding: 5px 12px;
-  align-items: start;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  transition: background 0.15s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 2px 8px;
+  border-bottom: none;
+  font-size: 10px;
+  transition: background 0.1s ease;
 }
 
-[data-theme="dark"] .tl-event {
-  border-bottom-color: rgba(255, 255, 255, 0.04);
+.tl-event:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.01);
+}
+
+[data-theme="dark"] .tl-event:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.01);
 }
 
 .tl-event:hover {
@@ -3005,37 +3014,46 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   border-bottom: none;
 }
 
+/* Time Column */
 .tl-time {
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: 9px;
+  min-width: 52px;
+  flex-shrink: 0;
 }
 
+/* Actor/Source Column */
 .tl-actor {
   color: var(--text-secondary);
   font-weight: 600;
-  font-size: 10px;
+  font-size: 9px;
+  min-width: 48px;
+  max-width: 64px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .tl-actor.host {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   color: var(--warning-color);
 }
 
 .icon-mini {
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
   flex-shrink: 0;
 }
 
+/* Action/Message Column */
 .tl-action {
   color: var(--text-primary);
   font-size: 10px;
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3043,15 +3061,15 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 
 .tl-action.response-preview {
   color: var(--text-secondary);
-  font-style: italic;
 }
 
+/* Status Indicator */
 .tl-status {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--text-tertiary);
-  margin-top: 2px;
+  margin-top: 3px;
   flex-shrink: 0;
 }
 
@@ -3068,31 +3086,47 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   background: var(--danger-color);
 }
 
-/* Host Summary Event */
+/* Host Summary Event - Block Style */
 .tl-event.host-summary {
-  grid-template-columns: 56px 72px 1fr;
-  background: rgba(245, 158, 11, 0.06);
-  border-left: 3px solid var(--warning-color);
-  padding: 8px 12px;
-  margin: 4px 0;
-  border-radius: 0 4px 4px 0;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(245, 158, 11, 0.04);
+  border-left: 2px solid var(--warning-color);
+  padding: 4px 8px 4px 10px;
+  margin: 2px 0;
 }
 
 .tl-event.host-summary:hover {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.tl-event.host-summary .tl-time {
+  display: none;
+}
+
+.tl-event.host-summary .tl-actor {
+  min-width: auto;
+}
+
+.tl-event.host-summary .tl-action {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .tl-stage {
   color: var(--warning-color);
-  font-size: 9px;
+  font-size: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   font-weight: 600;
+  margin-left: 4px;
 }
 
 .tl-summary {
   grid-column: 1 / -1;
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--text-secondary);
   line-height: 1.5;
   white-space: pre-wrap;
@@ -3136,60 +3170,54 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   background: rgba(239, 68, 68, 0.15);
 }
 
-/* ========== Timeline Flow Events (v2.1) ========== */
+/* ========== Timeline Flow Events (v2.1 - Log Style) ========== */
 
-/* System Actor */
+/* System Actor - Compact Badge */
 .tl-actor.system {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 18px;
-  background: linear-gradient(135deg, var(--primary-color) 0%, #38BDF8 100%);
-  color: white;
-  font-size: 9px;
+  min-width: 28px;
+  height: 14px;
+  padding: 0 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  border-radius: 3px;
+  letter-spacing: 0.3px;
+  border-radius: 2px;
   text-transform: uppercase;
 }
 
 /* Discussion Start Event */
 .tl-event.discussion-start {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0.04) 100%);
-  border-left: 3px solid var(--primary-color);
+  border-left: 2px solid var(--primary-color);
+  padding-left: 10px;
 }
 
 .tl-event.discussion-start .tl-action {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--primary-color);
 }
 
 /* Mode Start Event */
 .tl-event.mode-start {
-  background: rgba(139, 92, 246, 0.06);
-  border-left: 3px solid #8B5CF6;
-  margin-top: 8px;
+  border-left: 2px solid #8B5CF6;
+  padding-left: 10px;
+  margin-top: 4px;
 }
 
 .tl-event.mode-start:hover {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 .tl-event.mode-start .mode-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
+  font-weight: 600;
   color: #7C3AED;
 }
 
-.tl-event.mode-start .mode-icon {
-  font-size: 12px;
-}
-
 .tl-event.mode-start .mode-progress {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-tertiary);
   margin-left: 4px;
 }
@@ -3197,7 +3225,8 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 /* Mode End Event */
 .tl-event.mode-end {
   border-left: 2px solid #A78BFA;
-  opacity: 0.8;
+  padding-left: 10px;
+  margin-bottom: 4px;
 }
 
 .tl-event.mode-end .mode-label.completed {
@@ -3206,8 +3235,8 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 
 /* Round Start Event */
 .tl-event.round-start {
-  background: rgba(16, 185, 129, 0.04);
   border-left: 2px solid var(--success-color);
+  padding-left: 10px;
 }
 
 .tl-event.round-start .round-label {
@@ -3217,7 +3246,8 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 
 /* Round End Event */
 .tl-event.round-end {
-  opacity: 0.7;
+  border-left: 2px solid var(--border-color);
+  padding-left: 10px;
 }
 
 .tl-event.round-end .round-label.completed {
@@ -3225,14 +3255,10 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 }
 
 /* Dark mode adjustments for flow events */
-[data-theme="dark"] .tl-event.mode-start {
-  background: rgba(139, 92, 246, 0.1);
+[data-theme="dark"] .tl-event.mode-start:hover {
+  background: rgba(139, 92, 246, 0.08);
 }
 
-[data-theme="dark"] .tl-event.round-start {
-  background: rgba(16, 185, 129, 0.08);
-}
-
-[data-theme="dark"] .tl-event.discussion-start {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(14, 165, 233, 0.08) 100%);
+[data-theme="dark"] .tl-actor.system {
+  background: rgba(255, 255, 255, 0.08);
 }

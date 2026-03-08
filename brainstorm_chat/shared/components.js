@@ -552,7 +552,7 @@ class BottomPanel extends HTMLElement {
   }
 
   /**
-   * 渲染时间线事件 (v2.1 - 支持完整流程显示)
+   * 渲染时间线事件 (v2.1 - Log Viewer Style)
    */
   renderTimelineEvent(event) {
     const time = this.formatTime(event.timestamp);
@@ -564,7 +564,7 @@ class BottomPanel extends HTMLElement {
           <div class="tl-event discussion-start">
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
-            <span class="tl-action">Discussion started</span>
+            <span class="tl-action">[START] Discussion initialized</span>
           </div>
         `;
 
@@ -574,9 +574,7 @@ class BottomPanel extends HTMLElement {
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
             <span class="tl-action mode-label">
-              <span class="mode-icon">${this.getModeIcon(event.mode)}</span>
-              ${this.getModeName(event.mode)} started
-              <span class="mode-progress">(${event.modeIndex + 1}/${event.totalModes})</span>
+              [MODE] ${this.getModeName(event.mode)} ${event.modeIndex + 1}/${event.totalModes}
             </span>
           </div>
         `;
@@ -587,7 +585,7 @@ class BottomPanel extends HTMLElement {
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
             <span class="tl-action mode-label completed">
-              ${this.getModeName(event.mode)} completed
+              [DONE] ${this.getModeName(event.mode)}
             </span>
           </div>
         `;
@@ -597,7 +595,7 @@ class BottomPanel extends HTMLElement {
           <div class="tl-event round-start">
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
-            <span class="tl-action round-label">Round ${event.round} started</span>
+            <span class="tl-action round-label">[ROUND] ${event.round} begin</span>
           </div>
         `;
 
@@ -606,7 +604,7 @@ class BottomPanel extends HTMLElement {
           <div class="tl-event round-end">
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
-            <span class="tl-action round-label completed">Round ${event.round} completed</span>
+            <span class="tl-action round-label completed">[ROUND] ${event.round} done</span>
           </div>
         `;
 
@@ -651,27 +649,15 @@ class BottomPanel extends HTMLElement {
   }
 
   /**
-   * 获取模式图标
-   */
-  getModeIcon(mode) {
-    const icons = {
-      'brainstorm': '💡',
-      'round-table': '🔄',
-      'debate': '⚔️'
-    };
-    return icons[mode] || '📋';
-  }
-
-  /**
-   * 获取模式名称
+   * 获取模式名称 - 简短版本
    */
   getModeName(mode) {
     const names = {
-      'brainstorm': 'Brainstorm',
-      'round-table': 'Round Table',
-      'debate': 'Debate'
+      'brainstorm': 'BRAIN',
+      'round-table': 'TABLE',
+      'debate': 'DEBATE'
     };
-    return names[mode] || mode;
+    return names[mode] || mode.toUpperCase();
   }
 
   /**
