@@ -239,6 +239,14 @@
             config.validated = false;
             needsSave = true;
           }
+          // 修正错误的 endpoint
+          if (config.provider === 'deepseek') {
+            config.endpoint = 'https://api.deepseek.com/chat/completions';
+            needsSave = true;
+          } else if (config.provider === 'qwen') {
+            config.endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+            needsSave = true;
+          }
         });
 
         // 如果没有配置，默认添加主流模型
