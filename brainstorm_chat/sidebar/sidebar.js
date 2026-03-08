@@ -949,7 +949,7 @@
     { name: 'Claude', provider: 'anthropic', model: 'claude-3-opus' },
     { name: 'DeepSeek', provider: 'deepseek', model: 'deepseek-chat' },
     { name: '通义千问', provider: 'qwen', model: 'qwen-plus' },
-    { name: 'GLM-4', provider: 'glm', model: 'glm-4-plus' },
+    { name: 'GLM-5', provider: 'glm', model: 'glm-5' },
     { name: 'Kimi', provider: 'moonshot', model: 'moonshot-v1-8k' }
   ];
 

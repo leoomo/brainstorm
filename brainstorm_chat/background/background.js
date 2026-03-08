@@ -385,7 +385,7 @@ async function callErnie(model, systemPrompt, userPrompt) {
 // GLM API 调用
 async function callGLM(model, systemPrompt, userPrompt) {
   const endpoint = model.endpoint || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-  const modelName = model.model || 'glm-4-plus';
+  const modelName = model.model || 'glm-5';
 
   const response = await fetch(endpoint, {
     method: 'POST',
