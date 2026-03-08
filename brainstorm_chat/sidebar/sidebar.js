@@ -873,6 +873,12 @@
           model: model
         }
       }, (response) => {
+        // 检查运行时错误
+        if (chrome.runtime.lastError) {
+          console.error('API 校验失败:', chrome.runtime.lastError.message);
+          resolve(false);
+          return;
+        }
         resolve(response?.success || false);
       });
     });
