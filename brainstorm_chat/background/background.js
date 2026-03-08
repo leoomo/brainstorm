@@ -216,7 +216,12 @@ async function validateApiKey(provider, apiKey, modelName) {
 
 // OpenAI API 调用
 async function callOpenAI(model, systemPrompt, userPrompt) {
-  const endpoint = model.endpoint || 'https://api.openai.com/v1/chat/completions';
+  // 修正错误的 endpoint
+  let endpoint = model.endpoint || '';
+  const correctEndpoint = 'https://api.openai.com/v1/chat/completions';
+  if (!endpoint || !endpoint.includes('openai')) {
+    endpoint = correctEndpoint;
+  }
   const modelName = model.model || 'gpt-4o';
 
   const response = await fetch(endpoint, {
@@ -247,7 +252,12 @@ async function callOpenAI(model, systemPrompt, userPrompt) {
 
 // Anthropic API 调用
 async function callAnthropic(model, systemPrompt, userPrompt) {
-  const endpoint = model.endpoint || 'https://api.anthropic.com/v1/messages';
+  // 修正错误的 endpoint
+  let endpoint = model.endpoint || '';
+  const correctEndpoint = 'https://api.anthropic.com/v1/messages';
+  if (!endpoint || !endpoint.includes('anthropic')) {
+    endpoint = correctEndpoint;
+  }
   const modelName = model.model || 'claude-3-opus-20240229';
 
   const response = await fetch(endpoint, {
@@ -435,7 +445,15 @@ async function callGLM(model, systemPrompt, userPrompt) {
 
 // Moonshot (Kimi) API 调用
 async function callMoonshot(model, systemPrompt, userPrompt) {
-  const endpoint = model.endpoint || 'https://api.moonshot.cn/v1/chat/completions';
+  // 修正错误的 endpoint
+  let endpoint = model.endpoint || '';
+  const correctEndpoint = 'https://api.moonshot.cn/v1/chat/completions';
+  if (!endpoint || !endpoint.includes('moonshot')) {
+    endpoint = correctEndpoint;
+    console.log('Moonshot: 使用修正后的端点', endpoint);
+  } else {
+    console.log('Moonshot: 使用配置中的端点', endpoint);
+  }
   const modelName = model.model || 'moonshot-v1-8k';
 
   const response = await fetch(endpoint, {

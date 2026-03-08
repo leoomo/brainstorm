@@ -249,6 +249,18 @@
           } else if (config.provider === 'glm') {
             config.endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
             needsSave = true;
+          } else if (config.provider === 'moonshot') {
+            config.endpoint = 'https://api.moonshot.cn/v1/chat/completions';
+            needsSave = true;
+          } else if (config.provider === 'ernie') {
+            config.endpoint = 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/chat/completions_ernie';
+            needsSave = true;
+          } else if (config.provider === 'openai') {
+            config.endpoint = 'https://api.openai.com/v1/chat/completions';
+            needsSave = true;
+          } else if (config.provider === 'anthropic') {
+            config.endpoint = 'https://api.anthropic.com/v1/messages';
+            needsSave = true;
           }
         });
 
@@ -984,28 +996,27 @@
 
   // 获取修正后的 endpoint（兼容处理错误的 endpoint）
   function getCorrectEndpoint(provider, userEndpoint) {
-    const defaultEndpoint = DEFAULT_ENDPOINTS[provider] || '';
+    // 完整的 endpoint 映射（包含完整路径）
+    const endpoints = {
+      'openai': 'https://api.openai.com/v1/chat/completions',
+      'anthropic': 'https://api.anthropic.com/v1/messages',
+      'deepseek': 'https://api.deepseek.com/chat/completions',
+      'qwen': 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+      'glm': 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+      'moonshot': 'https://api.moonshot.cn/v1/chat/completions',
+      'ernie': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/chat/completions_ernie'
+    };
 
-    // DeepSeek 特殊处理
-    if (provider === 'deepseek') {
-      const correctEndpoint = 'https://api.deepseek.com/chat/completions';
-      if (!userEndpoint || userEndpoint.includes('/v1') || userEndpoint === 'https://api.deepseek.com') {
-        return correctEndpoint;
-      }
-      return userEndpoint;
+    const correctEndpoint = endpoints[provider];
+    if (!correctEndpoint) {
+      return userEndpoint || '';
     }
 
-    // Qwen 特殊处理 - 确保使用正确的端点
-    if (provider === 'qwen') {
-      const correctEndpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-      if (!userEndpoint || !userEndpoint.includes('dashscope')) {
-        return correctEndpoint;
-      }
-      return userEndpoint;
+    // 如果用户没填或填错了，都使用正确的
+    if (!userEndpoint || userEndpoint !== correctEndpoint) {
+      return correctEndpoint;
     }
-
-    // 其他 provider 使用默认
-    return userEndpoint || defaultEndpoint;
+    return userEndpoint;
   }
 
   // 内置默认模型
