@@ -64,13 +64,25 @@
 
         <!-- 空状态 -->
         <div class="empty-state" id="empty-state">
-          <div class="empty-text">没有讨论记录</div>
-          <div class="empty-hint">在下方输入需求开始新讨论</div>
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <div class="empty-text">开始一个新的讨论</div>
+          <div class="empty-hint">让多个 AI 模型一起讨论你的产品需求</div>
+          <button class="btn btn-primary" id="empty-new-discussion-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            新建讨论
+          </button>
         </div>
       </main>
 
-      <!-- 底部输入区 (可展开) -->
-      <footer class="input-area" id="input-area">
+      <!-- 底部输入区 (可展开) - 默认隐藏，点击新建后显示 -->
+      <footer class="input-area" id="input-area" style="display: none;">
         <div class="input-compact">
           <textarea
             class="input-field"

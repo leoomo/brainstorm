@@ -55,6 +55,7 @@
     modeCount: document.getElementById('mode-count'),
     startBtn: document.getElementById('start-btn'),
     expandedStartBtn: document.getElementById('expanded-start-btn'),
+    emptyNewDiscussionBtn: document.getElementById('empty-new-discussion-btn'),
     configBtn: document.getElementById('config-btn'),
     historyBtn: document.getElementById('history-btn'),
 
@@ -237,6 +238,26 @@
 
   // 初始化输入区交互
   function initInputArea() {
+    // 空状态的"新建讨论"按钮
+    if (elements.emptyNewDiscussionBtn) {
+      elements.emptyNewDiscussionBtn.addEventListener('click', () => {
+        showInputArea();
+        if (elements.requirementInput) {
+          elements.requirementInput.focus();
+        }
+      });
+    }
+
+    // Header 的"新建讨论"按钮
+    if (elements.newDiscussionBtn) {
+      elements.newDiscussionBtn.addEventListener('click', () => {
+        showInputArea();
+        if (elements.requirementInput) {
+          elements.requirementInput.focus();
+        }
+      });
+    }
+
     if (!elements.requirementInput) return;
 
     // 输入框获得焦点时展开
@@ -257,6 +278,21 @@
     if (elements.expandedStartBtn) {
       elements.expandedStartBtn.addEventListener('click', startDiscussion);
     }
+  }
+
+  // 显示输入区
+  function showInputArea() {
+    if (elements.inputArea) {
+      elements.inputArea.style.display = 'block';
+    }
+  }
+
+  // 隐藏输入区
+  function hideInputArea() {
+    if (elements.inputArea) {
+      elements.inputArea.style.display = 'none';
+    }
+    collapseInputArea();
   }
 
   function expandInputArea() {
@@ -450,12 +486,19 @@
   function updateEmptyState() {
     const activeDiscussions = StateManager.getActiveDiscussions();
     const completedDiscussions = StateManager.getCompletedDiscussions();
+    const hasDiscussions = activeDiscussions.length > 0 || completedDiscussions.length > 0;
 
+    // 空状态显示
     if (elements.emptyState) {
-      elements.emptyState.style.display =
-        (activeDiscussions.length === 0 && completedDiscussions.length === 0) ? 'block' : 'none';
+      elements.emptyState.style.display = hasDiscussions ? 'none' : 'flex';
     }
 
+    // 输入区：有讨论时显示，无讨论时隐藏
+    if (elements.inputArea) {
+      elements.inputArea.style.display = hasDiscussions ? 'block' : 'none';
+    }
+
+    // 已完成分隔线
     if (elements.completedDivider) {
       elements.completedDivider.style.display = completedDiscussions.length > 0 ? 'flex' : 'none';
     }
