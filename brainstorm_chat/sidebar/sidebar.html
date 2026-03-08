@@ -106,32 +106,35 @@
               <span class="mode-hint">可多选，按顺序执行</span>
             </div>
             <div class="mode-chips" id="mode-chips">
-              <label class="mode-chip active" data-mode="round-table" data-order="1">
-                <input type="checkbox" name="mode" value="round-table" checked>
+              <label class="mode-chip active" data-mode="brainstorm" data-order="1">
+                <input type="checkbox" name="mode" value="brainstorm" checked>
                 <span class="mode-order">1</span>
-                <span class="mode-name">圆桌会议</span>
-                <span class="mode-desc">轮流补充观点</span>
-              </label>
-              <label class="mode-chip" data-mode="brainstorm" data-order="2">
-                <input type="checkbox" name="mode" value="brainstorm">
-                <span class="mode-order">2</span>
                 <span class="mode-name">头脑风暴</span>
-                <span class="mode-desc">同时生成汇总</span>
+                <span class="mode-desc">发散创意</span>
               </label>
-              <label class="mode-chip" data-mode="debate" data-order="3">
-                <input type="checkbox" name="mode" value="debate">
+              <label class="mode-chip active" data-mode="round-table" data-order="2">
+                <input type="checkbox" name="mode" value="round-table" checked>
+                <span class="mode-order">2</span>
+                <span class="mode-name">圆桌会议</span>
+                <span class="mode-desc">轮流补充</span>
+              </label>
+              <label class="mode-chip active" data-mode="debate" data-order="3">
+                <input type="checkbox" name="mode" value="debate" checked>
                 <span class="mode-order">3</span>
                 <span class="mode-name">辩论评审</span>
-                <span class="mode-desc">互相质疑完善</span>
+                <span class="mode-desc">批判分析</span>
               </label>
             </div>
             <div class="selected-modes-preview" id="selected-modes-preview">
               <span class="preview-label">执行顺序:</span>
-              <span class="preview-modes" id="preview-modes">圆桌会议</span>
+              <span class="preview-modes" id="preview-modes">头脑风暴 → 圆桌会议 → 辩论评审</span>
             </div>
           </div>
           <div class="expand-section">
-            <div class="expand-label">参与模型</div>
+            <div class="expand-label">
+              参与模型
+              <span class="host-hint">主持人负责汇总各轮讨论</span>
+            </div>
             <div class="model-chips" id="model-chips">
               <!-- 动态加载模型选择 -->
             </div>

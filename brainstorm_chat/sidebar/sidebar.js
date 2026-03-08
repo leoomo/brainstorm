@@ -101,6 +101,7 @@
     await loadApiConfigs();
     await loadHistory();
     await StateManager.loadSelectedModels(); // 加载保存的模型选择
+    await StateManager.loadHostModel(); // 加载主持人模型
     await StateManager.loadProjects(); // 加载项目
     await StateManager.loadDiscussions(); // 加载讨论列表 (新)
     initHeaderProjectSwitcher(); // 初始化新 Header 项目切换器
@@ -391,6 +392,7 @@
     const enabledModels = state.apiConfigs.filter(c => c.validated);
     const disabledModels = state.apiConfigs.filter(c => !c.validated);
     const savedSelection = state.selectedModels || [];
+    const hostModelId = state.hostModelId;
 
     // 获取初始选择状态
     const getInitialSelection = (configId) => {
@@ -402,14 +404,37 @@
     // 渲染已启用的模型
     let html = enabledModels.map(config => {
       const isSelected = getInitialSelection(config.id);
+      const isHost = hostModelId === config.id;
       return `
-        <div class="model-chip ${isSelected ? 'selected' : ''}" data-id="${config.id}">
+        <div class="model-chip ${isSelected ? 'selected' : ''} ${isHost ? 'is-host' : ''}" data-id="${config.id}">
           <span class="model-chip-check">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
           </span>
           <span class="model-chip-name">${escapeHtml(config.name)}</span>
+          ${isHost ? `
+            <span class="host-indicator" title="点击取消主持人">
+              <svg class="host-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <span class="host-label">主持</span>
+            </span>
+          ` : ''}
+          ${isSelected && !isHost ? `
+            <button class="set-host-btn" title="设为讨论主持人">
+              <svg class="host-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <span class="host-label">设为主持</span>
+            </button>
+          ` : ''}
         </div>
       `;
     }).join('');
@@ -429,6 +454,26 @@
         chip.classList.toggle('selected');
         updateSelectedModelsFromChips();
         StateManager.saveSelectedModels();
+        renderModelChips(); // 重新渲染以更新主持人按钮
+      });
+    });
+
+    // 绑定主持人切换事件
+    elements.modelChips.querySelectorAll('.set-host-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const modelId = btn.closest('.model-chip').dataset.id;
+        StateManager.setHostModel(modelId);
+        renderModelChips();
+      });
+    });
+
+    // 绑定主持人取消事件 (点击主持人标记取消主持人)
+    elements.modelChips.querySelectorAll('.host-indicator').forEach(indicator => {
+      indicator.addEventListener('click', (e) => {
+        e.stopPropagation();
+        StateManager.setHostModel(null);
+        renderModelChips();
       });
     });
 
@@ -506,6 +551,19 @@
     if (!container) return;
 
     const activeDiscussions = StateManager.getActiveDiscussions();
+
+    console.log('[Sidebar] renderActiveDiscussionsV2', {
+      activeDiscussionsCount: activeDiscussions.length,
+      activeDiscussionId: StateManager.state.activeDiscussionId,
+      discussions: activeDiscussions.map(d => ({
+        id: d.id,
+        title: d.title,
+        status: d.status,
+        currentRound: d.currentRound,
+        modelsCount: d.models?.length,
+        models: d.models?.map(m => ({ modelId: m.modelId, name: m.name, status: m.status }))
+      }))
+    });
 
     if (activeDiscussions.length === 0) {
       container.innerHTML = '';
@@ -778,6 +836,18 @@
   function updateBottomPanelContent() {
     const panel = document.querySelector('bottom-panel');
     const discussion = StateManager.getActiveDiscussion();
+
+    console.log('[Sidebar] updateBottomPanelContent', {
+      hasPanel: !!panel,
+      hasDiscussion: !!discussion,
+      discussionId: discussion?.id,
+      currentRound: discussion?.currentRound,
+      totalRounds: discussion?.totalRounds,
+      progress: discussion?.progress,
+      modelsCount: discussion?.models?.length,
+      models: discussion?.models?.map(m => ({ modelId: m.modelId, name: m.name, status: m.status, progress: m.progress }))
+    });
+
     if (panel && discussion) {
       panel.setDiscussionContent(discussion);
     }
@@ -811,10 +881,17 @@
           break;
 
         case 'MODEL_STATUS_UPDATE':
+          console.log('[Sidebar] 收到 MODEL_STATUS_UPDATE', {
+            discussionId,
+            modelId: message.modelId,
+            status: message.status,
+            progress: message.progress,
+            isHost: message.isHost
+          });
           StateManager.updateModelStatus(
             discussionId,
             message.modelId,
-            { status: message.status, progress: message.progress, response: message.response, error: message.error }
+            { status: message.status, progress: message.progress, response: message.response, error: message.error, isHost: message.isHost }
           );
           // 如果当前正在查看这个讨论，更新面板
           if (StateManager.state.activeDiscussionId === discussionId) {
@@ -823,18 +900,60 @@
           break;
 
         case 'ROUND_COMPLETE':
-          // 更新讨论的消息
-          const discussion = StateManager.state.discussions.find(d => d.id === discussionId);
-          if (discussion) {
-            discussion.messages.push({
+          // 更新讨论的消息和轮次
+          const roundDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (roundDiscussion) {
+            // 添加消息
+            if (!roundDiscussion.messages) {
+              roundDiscussion.messages = [];
+            }
+            roundDiscussion.messages.push({
               round: message.round,
               responses: message.results
             });
-            discussion.currentRound = message.round + 1;
+            // 更新轮次 - 不超过总轮次
+            const totalRounds = roundDiscussion.totalRounds || 3;
+            const newRound = Math.min(message.round + 1, totalRounds);
+            roundDiscussion.currentRound = newRound;
+            roundDiscussion.updatedAt = new Date().toISOString();
+            console.log('[Sidebar] ROUND_COMPLETE - 更新轮次:', {
+              discussionId,
+              completedRound: message.round,
+              newCurrentRound: newRound,
+              totalRounds: totalRounds
+            });
+            // 保存并通知
             StateManager.saveDiscussions();
+            StateManager.notify('discussions', StateManager.state.discussions);
           }
-          renderActiveDiscussions();
-          updateBottomPanelContent();
+          // 使用 requestAnimationFrame 确保 DOM 更新
+          requestAnimationFrame(() => {
+            renderDashboard();
+            updateBottomPanelContent();
+          });
+          break;
+
+        case 'HOST_SUMMARY':
+          // 主持人汇总
+          const hostDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (hostDiscussion && hostDiscussion.messages && hostDiscussion.messages.length > 0) {
+            // 将主持人汇总添加到最后一条消息
+            const lastMessage = hostDiscussion.messages[hostDiscussion.messages.length - 1];
+            lastMessage.hostSummary = message.summary;
+            console.log('[Sidebar] HOST_SUMMARY - 主持人汇总完成:', {
+              discussionId,
+              model: message.summary?.model,
+              stage: message.summary?.stage
+            });
+            StateManager.saveDiscussions();
+            StateManager.notify('discussions', StateManager.state.discussions);
+          }
+          // 使用 requestAnimationFrame 确保 DOM 更新
+          requestAnimationFrame(() => {
+            renderDashboard();
+            updateBottomPanelContent();
+          });
+          showToast('主持人汇总完成', 'success');
           break;
 
         case 'DISCUSSION_COMPLETED':
@@ -1269,9 +1388,26 @@
       chrome.storage.local.get(['apiConfigs'], (result) => {
         state.apiConfigs = result.apiConfigs || [];
 
+        console.log('[Sidebar] loadApiConfigs - 加载的配置数:', state.apiConfigs.length);
+        state.apiConfigs.forEach((config, index) => {
+          console.log(`[Sidebar] 配置 ${index}:`, {
+            id: config.id,
+            name: config.name,
+            provider: config.provider,
+            hasApiKey: !!config.apiKey,
+            validated: config.validated
+          });
+        });
+
         // 迁移逻辑：将 enabled 转换为 validated
         let needsSave = false;
         state.apiConfigs.forEach(config => {
+          // 确保有 id 字段
+          if (!config.id) {
+            config.id = generateId();
+            console.log('[Sidebar] 为配置添加 ID:', { name: config.name, newId: config.id });
+            needsSave = true;
+          }
           if ('enabled' in config && !('validated' in config)) {
             // 旧配置：enabled 转为 validated
             config.validated = config.enabled;
@@ -1553,8 +1689,17 @@
 
   // 开始讨论
   async function startDiscussion() {
+    console.log('[Sidebar] startDiscussion 被调用');
+
     const requirement = elements.requirementInput ? elements.requirementInput.value.trim() : '';
-    if (!requirement || state.selectedModels.length === 0 || state.discussionModes.length === 0) return;
+    console.log('[Sidebar] 需求:', requirement?.substring(0, 50));
+    console.log('[Sidebar] 选中的模型:', state.selectedModels);
+    console.log('[Sidebar] 选中的模式:', state.discussionModes);
+
+    if (!requirement || state.selectedModels.length === 0 || state.discussionModes.length === 0) {
+      console.log('[Sidebar] 条件不满足，返回');
+      return;
+    }
 
     // 检查并发限制
     if (!StateManager.canStartNewDiscussion()) {
@@ -1566,6 +1711,19 @@
     const selectedConfigs = state.selectedModels
       .map(id => state.apiConfigs.find(c => c.id === id))
       .filter(Boolean);
+
+    // 获取主持人配置
+    const hostConfig = state.hostModelId
+      ? selectedConfigs.find(c => c.id === state.hostModelId)
+      : null;
+
+    console.log('[Sidebar] selectedConfigs:', selectedConfigs.map(c => ({
+      id: c.id,
+      name: c.name,
+      provider: c.provider,
+      hasApiKey: !!c.apiKey,
+      idType: typeof c.id
+    })));
 
     if (selectedConfigs.length === 0) {
       showToast('请先配置并选择模型', 'error');
@@ -1597,7 +1755,14 @@
 
     // 启动后台讨论 - 传递所有模式
     try {
-      await chrome.runtime.sendMessage({
+      console.log('[Sidebar] 准备发送 START_DISCUSSION', {
+        discussionId: discussion.id,
+        modes: state.discussionModes,
+        modelsCount: selectedConfigs.length,
+        models: selectedConfigs.map(m => ({ id: m.id, name: m.name, hasApiKey: !!m.apiKey }))
+      });
+
+      const response = await chrome.runtime.sendMessage({
         type: 'START_DISCUSSION',
         data: {
           discussionId: discussion.id,
@@ -1605,13 +1770,21 @@
           modes: state.discussionModes, // 传递模式数组
           currentModeIndex: 0, // 从第一个模式开始
           models: selectedConfigs,
-          totalRounds: state.maxRounds
+          totalRounds: state.maxRounds,
+          hostModel: hostConfig // 主持人配置
         }
       });
+
+      console.log('[Sidebar] START_DISCUSSION 响应:', response);
+
+      if (response && response.error) {
+        throw new Error(response.message || response.error);
+      }
 
       const modeNames = state.discussionModes.map(m => getModeName(m)).join(' → ');
       showToast(`讨论已启动: ${modeNames}`, 'success');
     } catch (error) {
+      console.error('[Sidebar] 启动讨论失败:', error);
       showToast('启动讨论失败: ' + error.message, 'error');
       StateManager.updateDiscussionProgress(discussion.id, { status: 'error', error: error.message });
       renderDashboard();

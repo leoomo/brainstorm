@@ -11,7 +11,9 @@ const runningDiscussions = new Map();
 
 // 讨论控制器
 class DiscussionController {
-  constructor(discussionId, requirement, modes, models, totalRounds) {
+  constructor(discussionId, requirement, modes, models, totalRounds, hostModel) {
+    console.log('[DiscussionController] 构造函数被调用', { discussionId, modes, modelsCount: models?.length, totalRounds, hasHost: !!hostModel });
+
     this.discussionId = discussionId;
     this.requirement = requirement;
     // 支持单模式或多模式
@@ -19,11 +21,14 @@ class DiscussionController {
     this.currentModeIndex = 0;
     this.models = models;
     this.totalRounds = totalRounds;
+    this.hostModel = hostModel; // 主持人模型
     this.currentRound = 1;
     this.messages = [];
     this.status = 'running'; // 'running' | 'paused' | 'completed' | 'error' | 'cancelled'
     this.error = null;
     this.abortController = new AbortController();
+
+    console.log('[DiscussionController] 构造完成', { currentMode: this.currentMode, modes: this.modes });
   }
 
   // 获取当前模式
@@ -64,6 +69,8 @@ class DiscussionController {
 
   // 广播更新到所有监听者
   broadcastUpdate(update) {
+    console.log('[DiscussionController] 广播更新:', update.type, update);
+
     chrome.runtime.sendMessage(update).catch(err => {
       // sidebar 可能未打开，忽略错误
       if (!err.message?.includes('Could not establish connection')) {
@@ -73,7 +80,15 @@ class DiscussionController {
   }
 
   // 更新模型状态
-  updateModelStatus(modelId, status, progress, response = null, error = null) {
+  updateModelStatus(modelId, status, progress, response = null, error = null, isHost = false) {
+    console.log('[DiscussionController] updateModelStatus 被调用', {
+      discussionId: this.discussionId,
+      modelId,
+      status,
+      progress,
+      isHost
+    });
+
     this.broadcastUpdate({
       type: 'MODEL_STATUS_UPDATE',
       discussionId: this.discussionId,
@@ -82,6 +97,7 @@ class DiscussionController {
       progress,
       response,
       error,
+      isHost,
       currentMode: this.currentMode,
       currentModeIndex: this.currentModeIndex,
       totalModes: this.modes.length
@@ -90,10 +106,13 @@ class DiscussionController {
 
   // 运行下一轮
   async runNextRound() {
+    console.log(`[DiscussionController] runNextRound - status: ${this.status}, modeIndex: ${this.currentModeIndex}, round: ${this.currentRound}`);
+
     if (this.status !== 'running') return;
 
     // 检查是否所有模式都已完成
     if (this.currentModeIndex >= this.modes.length) {
+      console.log(`[DiscussionController] 所有模式已完成`);
       this.status = 'completed';
       this.broadcastUpdate({
         type: 'DISCUSSION_COMPLETED',
@@ -111,6 +130,7 @@ class DiscussionController {
       this.currentRound = 1;
 
       if (this.currentModeIndex >= this.modes.length) {
+        console.log(`[DiscussionController] 所有模式已完成 (切换后)`);
         this.status = 'completed';
         this.broadcastUpdate({
           type: 'DISCUSSION_COMPLETED',
@@ -132,6 +152,8 @@ class DiscussionController {
     }
 
     try {
+      console.log(`[DiscussionController] 开始执行轮次 ${this.currentRound}, 模式: ${this.currentMode}`);
+
       // 广播当前轮次开始
       this.broadcastUpdate({
         type: 'ROUND_START',
@@ -143,6 +165,8 @@ class DiscussionController {
       });
 
       const results = await this.executeRound();
+
+      console.log(`[DiscussionController] 轮次 ${this.currentRound} 完成, 结果数: ${results?.length || 0}`);
 
       if (this.status === 'cancelled') return;
 
@@ -161,6 +185,23 @@ class DiscussionController {
         results
       });
 
+      // 主持人汇总
+      if (this.hostModel && this.status === 'running') {
+        const hostSummary = await this.executeHostSummary(results);
+
+        // 保存主持人汇总到消息中
+        this.messages[this.messages.length - 1].hostSummary = hostSummary;
+
+        // 广播主持人汇总
+        this.broadcastUpdate({
+          type: 'HOST_SUMMARY',
+          discussionId: this.discussionId,
+          round: this.currentRound,
+          mode: this.currentMode,
+          summary: hostSummary
+        });
+      }
+
       this.currentRound++;
 
       // 自动继续下一轮
@@ -168,6 +209,7 @@ class DiscussionController {
         await this.runNextRound();
       }
     } catch (error) {
+      console.error(`[DiscussionController] 轮次执行失败:`, error);
       if (this.status !== 'cancelled') {
         this.status = 'error';
         this.error = error.message;
@@ -184,6 +226,8 @@ class DiscussionController {
   // 执行单轮讨论
   async executeRound() {
     const { requirement, currentMode, models, currentRound, messages } = this;
+
+    console.log(`[DiscussionController] executeRound - 模式: ${currentMode}, 模型数: ${models?.length || 0}`);
 
     // 获取前一轮消息作为上下文
     const previousMessages = messages.length > 0 ? messages[messages.length - 1].responses : [];
@@ -209,6 +253,8 @@ class DiscussionController {
 
   // 圆桌会议模式
   async executeRoundTable(requirement, models, round, previousMessages) {
+    console.log(`[executeRoundTable] 开始 - 需求长度: ${requirement?.length || 0}, 模型数: ${models?.length || 0}, 轮次: ${round}`);
+
     const systemPrompt = `你是一个产品需求分析助手。请基于用户的需求，从你的角度补充和完善产品文档。
 
 讨论规则：
@@ -229,6 +275,8 @@ class DiscussionController {
     for (const model of models) {
       if (this.status === 'cancelled') break;
 
+      console.log(`[executeRoundTable] 调用模型: ${model.name}, apiKey存在: ${!!model.apiKey}`);
+
       this.updateModelStatus(model.id || model.name, 'running', 0);
 
       try {
@@ -241,7 +289,7 @@ class DiscussionController {
 
         this.updateModelStatus(model.id || model.name, 'completed', 100, response);
       } catch (error) {
-        console.error(`模型 ${model.name} 调用失败:`, error);
+        console.error(`[executeRoundTable] 模型 ${model.name} 调用失败:`, error);
         results.push({
           model: model.name,
           content: `[错误] ${error.message}`,
@@ -252,11 +300,17 @@ class DiscussionController {
       }
     }
 
+    console.log(`[executeRoundTable] 完成 - 结果数: ${results.length}`);
     return results;
   }
 
   // 头脑风暴模式
   async executeBrainstorm(requirement, models) {
+    console.log('[executeBrainstorm] 开始执行', {
+      modelsCount: models?.length,
+      models: models?.map(m => ({ id: m.id, name: m.name, provider: m.provider }))
+    });
+
     const systemPrompt = `你是一个创意头脑风暴助手。请针对用户需求，快速生成多个创意点子和想法。
 
 讨论规则：
@@ -269,21 +323,25 @@ class DiscussionController {
     const userPrompt = `产品需求：\n${requirement}\n\n请给出你的创意建议。`;
 
     const promises = models.map(async (model) => {
-      this.updateModelStatus(model.id || model.name, 'running', 0);
+      const modelId = model.id || model.name;
+      console.log('[executeBrainstorm] 准备调用模型:', { modelId, name: model.name });
+
+      this.updateModelStatus(modelId, 'running', 0);
 
       try {
         const response = await this.callModelWithTimeout(model, systemPrompt, userPrompt);
+        console.log('[executeBrainstorm] 模型调用成功:', { modelId, responseLength: response?.length });
 
-        this.updateModelStatus(model.id || model.name, 'completed', 100, response);
+        this.updateModelStatus(modelId, 'completed', 100, response);
 
         return {
           model: model.name,
           content: response
         };
       } catch (error) {
-        console.error(`模型 ${model.name} 调用失败:`, error);
+        console.error(`[executeBrainstorm] 模型 ${model.name} 调用失败:`, error);
 
-        this.updateModelStatus(model.id || model.name, 'error', 0, null, error.message);
+        this.updateModelStatus(modelId, 'error', 0, null, error.message);
 
         return {
           model: model.name,
@@ -350,26 +408,179 @@ ${previousMessages.map(m => `- ${m.model}: ${m.content?.substring(0, 300)}...`).
 
   // 带超时的模型调用
   async callModelWithTimeout(model, systemPrompt, userPrompt, timeout = 120000) {
+    console.log('[callModelWithTimeout] 开始', { modelName: model.name, timeout });
+
+    let timer;
+    let checkCancelled;
+
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+      if (checkCancelled) clearInterval(checkCancelled);
+    };
+
     return Promise.race([
       callModelAPI(model, systemPrompt, userPrompt),
       new Promise((_, reject) => {
-        const timer = setTimeout(() => {
+        timer = setTimeout(() => {
+          cleanup();
+          console.log('[callModelWithTimeout] 请求超时', { modelName: model.name });
           reject(new Error('请求超时'));
         }, timeout);
 
         // 监听取消信号
-        const checkCancelled = setInterval(() => {
+        checkCancelled = setInterval(() => {
           if (this.status === 'cancelled') {
-            clearTimeout(timer);
-            clearInterval(checkCancelled);
+            cleanup();
+            console.log('[callModelWithTimeout] 请求已取消', { modelName: model.name });
             reject(new Error('已取消'));
           }
         }, 100);
-
-        // 清理
-        setTimeout(() => clearInterval(checkCancelled), timeout + 1000);
       })
-    ]);
+    ]).then(result => {
+      cleanup();
+      console.log('[callModelWithTimeout] 请求成功', { modelName: model.name, responseLength: result?.length });
+      return result;
+    }).catch(error => {
+      cleanup();
+      console.log('[callModelWithTimeout] 请求失败', { modelName: model.name, error: error.message });
+      throw error;
+    });
+  }
+
+  // 执行主持人汇总
+  async executeHostSummary(roundResults) {
+    if (!this.hostModel) return null;
+
+    const stage = this.getDiscussionStage();
+    const prompt = this.getHostSummaryPrompt(stage, roundResults);
+
+    console.log(`[DiscussionController] 主持人汇总 - 阶段: ${stage}, 模型: ${this.hostModel.name}`);
+
+    this.updateModelStatus(this.hostModel.id || this.hostModel.name, 'running', 0, null, null, true);
+
+    try {
+      const response = await this.callModelWithTimeout(
+        this.hostModel,
+        prompt.system,
+        prompt.user
+      );
+
+      this.updateModelStatus(this.hostModel.id || this.hostModel.name, 'completed', 100, response, null, true);
+
+      return {
+        model: this.hostModel.name,
+        content: response,
+        stage: stage
+      };
+    } catch (error) {
+      console.error(`[DiscussionController] 主持人汇总失败:`, error);
+      this.updateModelStatus(this.hostModel.id || this.hostModel.name, 'error', 0, null, error.message, true);
+      return {
+        model: this.hostModel.name,
+        content: `[主持人汇总失败: ${error.message}]`,
+        stage: stage,
+        error: true
+      };
+    }
+  }
+
+  // 获取讨论阶段
+  getDiscussionStage() {
+    const mode = this.currentMode;
+    const isLastRound = this.currentRound >= this.totalRounds;
+    const isLastMode = this.currentModeIndex >= this.modes.length - 1;
+
+    if (mode === 'brainstorm') return 'brainstorm_summary';
+    if (mode === 'round-table') {
+      if (isLastRound && isLastMode) return 'round_final';
+      return 'round_summary';
+    }
+    if (mode === 'debate') return 'debate_summary';
+    return 'unknown';
+  }
+
+  // 获取主持人汇总提示词
+  getHostSummaryPrompt(stage, results) {
+    const prompts = {
+      'brainstorm_summary': {
+        system: `你是讨论主持人，负责汇总头脑风暴的创意。
+
+任务：
+1. 提炼3-5个核心创意方向
+2. 去除重复观点
+3. 标注最有价值的建议
+4. 列出需要进一步明确的问题
+
+请用 Markdown 格式输出。`,
+        user: `需求：${this.requirement}
+
+以下是各模型的头脑风暴结果：
+
+${results.map(r => `### ${r.model}\n${r.content}`).join('\n\n---\n\n')}
+
+请汇总以上创意。`
+      },
+
+      'round_summary': {
+        system: `你是讨论主持人，负责整理圆桌讨论的观点。
+
+任务：
+1. 总结各模型的核心观点
+2. 标注共识点和争议点
+3. 补充遗漏的重要方面
+4. 为下一轮讨论提供方向
+
+请用 Markdown 格式输出。`,
+        user: `需求：${this.requirement}
+
+本轮讨论结果：
+
+${results.map(r => `### ${r.model}\n${r.content}`).join('\n\n---\n\n')}
+
+请整理以上观点。`
+      },
+
+      'round_final': {
+        system: `你是讨论主持人，负责汇总所有讨论并生成最终的需求文档框架。
+
+任务：
+1. 综合所有讨论内容
+2. 提炼核心功能点
+3. 梳理用户故事和使用场景
+4. 列出技术要点和风险
+5. 生成结构化的需求文档框架
+
+请用 Markdown 格式输出。`,
+        user: `需求：${this.requirement}
+
+所有讨论结果：
+
+${this.messages.map(m => `### 第${m.round}轮 (${this.getModeName(m.mode)})\n${m.responses.map(r => `**${r.model}**: ${r.content?.substring(0, 500)}...`).join('\n\n')}`).join('\n\n---\n\n')}
+
+请生成最终的需求文档框架。`
+      },
+
+      'debate_summary': {
+        system: `你是讨论主持人，负责总结辩论评审的结论。
+
+任务：
+1. 总结各方核心论点
+2. 分析争议焦点
+3. 给出平衡性建议
+4. 为最终文档提供改进方向
+
+请用 Markdown 格式输出。`,
+        user: `需求：${this.requirement}
+
+评审意见：
+
+${results.map(r => `### ${r.model}\n${r.content}`).join('\n\n---\n\n')}
+
+请总结评审结论。`
+      }
+    };
+
+    return prompts[stage] || prompts['round_summary'];
   }
 }
 
@@ -495,27 +706,46 @@ ${previousMessages.map(m => `- ${m.model}: ${m.content.substring(0, 300)}...`).j
 // 发送流式消息到 popup
 // 调用模型 API
 async function callModelAPI(model, systemPrompt, userPrompt) {
+  console.log(`[Background] 开始调用模型: ${model.name} (${model.provider})`);
+  const startTime = Date.now();
+
   if (!model.apiKey) {
     throw new Error(`请配置 ${model.name} 的 API Key`);
   }
 
-  switch (model.provider) {
-    case 'openai':
-      return await callOpenAI(model, systemPrompt, userPrompt);
-    case 'anthropic':
-      return await callAnthropic(model, systemPrompt, userPrompt);
-    case 'deepseek':
-      return await callDeepSeek(model, systemPrompt, userPrompt);
-    case 'qwen':
-      return await callQwen(model, systemPrompt, userPrompt);
-    case 'ernie':
-      return await callErnie(model, systemPrompt, userPrompt);
-    case 'glm':
-      return await callGLM(model, systemPrompt, userPrompt);
-    case 'moonshot':
-      return await callMoonshot(model, systemPrompt, userPrompt);
-    default:
-      throw new Error(`不支持的提供商: ${model.provider}`);
+  try {
+    let result;
+    switch (model.provider) {
+      case 'openai':
+        result = await callOpenAI(model, systemPrompt, userPrompt);
+        break;
+      case 'anthropic':
+        result = await callAnthropic(model, systemPrompt, userPrompt);
+        break;
+      case 'deepseek':
+        result = await callDeepSeek(model, systemPrompt, userPrompt);
+        break;
+      case 'qwen':
+        result = await callQwen(model, systemPrompt, userPrompt);
+        break;
+      case 'ernie':
+        result = await callErnie(model, systemPrompt, userPrompt);
+        break;
+      case 'glm':
+        result = await callGLM(model, systemPrompt, userPrompt);
+        break;
+      case 'moonshot':
+        result = await callMoonshot(model, systemPrompt, userPrompt);
+        break;
+      default:
+        throw new Error(`不支持的提供商: ${model.provider}`);
+    }
+
+    console.log(`[Background] 模型 ${model.name} 调用成功，响应长度: ${result?.length || 0}`);
+    return result;
+  } catch (error) {
+    console.error(`[Background] 模型 ${model.name} 调用失败:`, error);
+    throw error;
   }
 }
 
@@ -906,16 +1136,46 @@ async function handleMessage(message) {
   switch (type) {
     // 新讨论系统
     case 'START_DISCUSSION': {
-      const { discussionId, requirement, modes, currentModeIndex, models, totalRounds } = data;
+      const { discussionId, requirement, modes, currentModeIndex, models, totalRounds, hostModel } = data;
+
+      console.log('[Background] 收到 START_DISCUSSION:', {
+        discussionId,
+        requirement: requirement?.substring(0, 50),
+        modes,
+        modelsCount: models?.length,
+        hasHost: !!hostModel,
+        models: models?.map(m => ({
+          id: m.id,
+          idType: typeof m.id,
+          name: m.name,
+          provider: m.provider,
+          hasApiKey: !!m.apiKey
+        }))
+      });
 
       // 检查是否已存在
       if (runningDiscussions.has(discussionId)) {
         throw new Error('讨论已在运行中');
       }
 
-      // 创建控制器并启动 - 支持多模式
+      // 验证模型配置
+      if (!models || models.length === 0) {
+        throw new Error('没有选择任何模型');
+      }
+
+      const invalidModels = models.filter(m => !m.apiKey);
+      if (invalidModels.length > 0) {
+        throw new Error(`以下模型缺少 API Key: ${invalidModels.map(m => m.name).join(', ')}`);
+      }
+
+      // 验证主持人模型
+      if (hostModel && !hostModel.apiKey) {
+        throw new Error(`主持人模型 ${hostModel.name} 缺少 API Key`);
+      }
+
+      // 创建控制器并启动 - 支持多模式和主持人
       const controller = new DiscussionController(
-        discussionId, requirement, modes || ['round-table'], models, totalRounds
+        discussionId, requirement, modes || ['round-table'], models, totalRounds, hostModel
       );
 
       // 如果指定了当前模式索引，设置它
@@ -925,8 +1185,20 @@ async function handleMessage(message) {
 
       runningDiscussions.set(discussionId, controller);
 
-      // 异步启动，立即返回
-      controller.runNextRound();
+      // 异步启动，立即返回，但捕获错误
+      controller.runNextRound().catch(error => {
+        console.error('[Background] runNextRound 错误:', error);
+        controller.status = 'error';
+        controller.error = error.message;
+        controller.broadcastUpdate({
+          type: 'DISCUSSION_ERROR',
+          discussionId,
+          error: error.message
+        });
+        runningDiscussions.delete(discussionId);
+      });
+
+      console.log('[Background] 讨论已启动，等待执行...');
 
       return {
         type: 'DISCUSSION_STARTED',

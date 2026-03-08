@@ -359,6 +359,7 @@ class BottomPanel extends HTMLElement {
   constructor() {
     super();
     this.state = 'collapsed';
+    this.currentDiscussion = null; // 缓存当前讨论数据
     // 立即设置初始状态，确保在 render 之前
     this.setAttribute('data-state', 'collapsed');
   }
@@ -375,6 +376,10 @@ class BottomPanel extends HTMLElement {
     this.state = state;
     this.setAttribute('data-state', state);
     this.render();
+    // render 后恢复讨论内容
+    if (this.currentDiscussion) {
+      this.setDiscussionContent(this.currentDiscussion);
+    }
   }
 
   render() {
@@ -428,55 +433,236 @@ class BottomPanel extends HTMLElement {
     });
   }
 
+  // ========== Timeline Methods (v2.0) ==========
+
+  /**
+   * 将讨论数据转换为时间线事件
+   */
+  generateTimelineEvents(discussion) {
+    const events = [];
+    const { models = [], messages = [], currentRound, totalRounds } = discussion;
+
+    // 添加模型状态事件
+    models.forEach(model => {
+      events.push({
+        type: 'model-status',
+        timestamp: discussion.updatedAt,
+        modelId: model.modelId,
+        modelName: model.name,
+        status: model.status,
+        progress: model.progress,
+        isHost: model.isHost
+      });
+    });
+
+    // 添加消息历史事件
+    messages.forEach(msg => {
+      const msgTime = msg.timestamp || discussion.updatedAt;
+
+      // 模型响应
+      if (msg.responses) {
+        msg.responses.forEach(r => {
+          events.push({
+            type: 'model-response',
+            timestamp: msgTime,
+            modelName: r.model,
+            content: r.content,
+            round: msg.round
+          });
+        });
+      }
+
+      // 主持人汇总
+      if (msg.hostSummary) {
+        events.push({
+          type: 'host-summary',
+          timestamp: msgTime,
+          modelName: msg.hostSummary.model,
+          content: msg.hostSummary.content,
+          stage: msg.hostSummary.stage,
+          round: msg.round
+        });
+      }
+    });
+
+    return events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  }
+
+  /**
+   * 渲染时间线事件
+   */
+  renderTimelineEvent(event) {
+    const time = this.formatTime(event.timestamp);
+    const typeClass = event.type;
+
+    switch (event.type) {
+      case 'model-status':
+        return `
+          <div class="tl-event ${typeClass} ${event.status}">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
+            <span class="tl-action">${this.getStatusAction(event.status, event.isHost)}</span>
+            <span class="tl-status ${event.status}"></span>
+          </div>
+        `;
+
+      case 'model-response':
+        return `
+          <div class="tl-event ${typeClass}">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor">${Utils.escapeHtml(event.modelName)}</span>
+            <span class="tl-action response-preview">${Utils.escapeHtml(event.content?.substring(0, 60) || '')}</span>
+          </div>
+        `;
+
+      case 'host-summary':
+        return `
+          <div class="tl-event host-summary">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor host">
+              <svg class="icon-mini" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              </svg>
+              HOST
+            </span>
+            <span class="tl-stage">${this.getStageText(event.stage)}</span>
+            <div class="tl-summary">${Utils.escapeHtml(event.content?.substring(0, 120) || '')}</div>
+          </div>
+        `;
+
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * 获取状态动作文本
+   */
+  getStatusAction(status, isHost = false) {
+    if (isHost) {
+      const hostActions = {
+        pending: 'waiting',
+        running: 'summarizing...',
+        completed: 'done',
+        error: 'failed'
+      };
+      return hostActions[status] || status;
+    }
+    const actions = {
+      pending: 'waiting',
+      running: 'thinking...',
+      completed: 'done',
+      error: 'failed'
+    };
+    return actions[status] || status;
+  }
+
+  /**
+   * 格式化时间戳
+   */
+  formatTime(isoString) {
+    if (!isoString) return '--:--:--';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', { hour12: false });
+  }
+
+  /**
+   * 设置讨论内容 - 时间线布局 (v2.0)
+   */
   setDiscussionContent(discussion) {
+    // 缓存讨论数据，以便在 render 后恢复
+    this.currentDiscussion = discussion;
+
+    console.log('[BottomPanel] setDiscussionContent 被调用', {
+      hasDiscussion: !!discussion,
+      discussionId: discussion?.id,
+      title: discussion?.title,
+      modelsCount: discussion?.models?.length
+    });
+
     const content = this.querySelector('.panel-content');
-    if (!content || !discussion) return;
+    console.log('[BottomPanel] querySelector .panel-content 结果:', content);
 
-    const { models = [], messages = [], currentRound = 1, totalRounds = 3 } = discussion;
+    if (!content || !discussion) {
+      console.log('[BottomPanel] 提前返回 - content:', !!content, 'discussion:', !!discussion);
+      return;
+    }
 
-    const latestOutput = messages.length > 0 && messages[messages.length - 1].responses
-      ? messages[messages.length - 1].responses.map(r =>
-          `<div class="output-message">
-            <div class="output-header">
-              <span class="model-badge">${Utils.escapeHtml(r.model || 'Unknown')}</span>
-            </div>
-            <div class="output-content">${Utils.escapeHtml(r.content?.substring(0, 200) || '')}...</div>
-          </div>`
-        ).join('')
-      : '<div class="output-placeholder">等待模型响应...</div>';
+    const { models = [], currentRound = 1, totalRounds = 3, progress = 0 } = discussion;
+    const events = this.generateTimelineEvents(discussion);
+
+    console.log('[BottomPanel] 生成时间线', {
+      modelsCount: models.length,
+      eventsCount: events.length,
+      currentRound,
+      totalRounds,
+      progress,
+      discussionCurrentRound: discussion.currentRound,
+      discussionTotalRounds: discussion.totalRounds
+    });
+
+    // 紧凑头部
+    const headerHtml = `
+      <div class="timeline-header">
+        <span class="timeline-title">${Utils.escapeHtml(discussion.title || 'Discussion')}</span>
+        <span class="timeline-meta">
+          <span class="round-badge">R${currentRound}/${totalRounds}</span>
+          <span class="progress-mini">${progress}%</span>
+        </span>
+      </div>
+    `;
+
+    // 模型状态栏 (单行)
+    const statusBarHtml = `
+      <div class="status-bar">
+        ${models.map(m => `
+          <span class="status-chip ${m.status} ${m.isHost ? 'host' : ''}" data-model="${m.modelId}">
+            <span class="chip-dot"></span>
+            <span class="chip-name">${Utils.escapeHtml(m.name)}</span>
+          </span>
+        `).join('')}
+      </div>
+    `;
+
+    // 时间线日志
+    const timelineHtml = events.length > 0
+      ? events.map(e => this.renderTimelineEvent(e)).join('')
+      : '<div class="timeline-empty">Waiting for events...</div>';
 
     content.innerHTML = `
-      <div class="discussion-detail">
-        <div class="detail-header">
-          <h3 class="detail-title">${Utils.escapeHtml(discussion.title || '未命名讨论')}</h3>
-          <span class="detail-round">第 ${currentRound}/${totalRounds} 轮</span>
-        </div>
-
-        <div class="detail-models">
-          ${models.map(m => `
-            <div class="detail-model-item ${m.status || 'pending'}">
-              <span class="model-name">${Utils.escapeHtml(m.name || 'Unknown')}</span>
-              <div class="model-progress">
-                <div class="progress-fill" style="width: ${m.progress || 0}%"></div>
-              </div>
-              <span class="model-status-text">${this.getStatusText(m.status)}</span>
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="detail-output">
-          <div class="output-header">实时输出</div>
-          <div class="output-stream">
-            ${latestOutput}
-          </div>
+      <div class="discussion-timeline">
+        ${headerHtml}
+        ${statusBarHtml}
+        <div class="timeline-log" id="timeline-log">
+          ${timelineHtml}
         </div>
       </div>
     `;
 
-    const outputStream = content.querySelector('.output-stream');
-    if (outputStream) {
-      outputStream.scrollTop = outputStream.scrollHeight;
-    }
+    // 自动滚动到底部
+    const log = content.querySelector('#timeline-log');
+    if (log) log.scrollTop = log.scrollHeight;
+  }
+
+  getHostStatusText(status) {
+    const texts = {
+      pending: '等待汇总',
+      running: '汇总中...',
+      completed: '汇总完成',
+      error: '汇总出错'
+    };
+    return texts[status] || status || '等待汇总';
+  }
+
+  getStageText(stage) {
+    const texts = {
+      'brainstorm_summary': 'Brainstorm',
+      'round_summary': 'Round',
+      'round_final': 'Final',
+      'debate_summary': 'Debate'
+    };
+    return texts[stage] || 'Summary';
   }
 
   getStatusText(status) {

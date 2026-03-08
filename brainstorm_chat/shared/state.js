@@ -10,7 +10,8 @@ const StateManager = {
     // 配置
     apiConfigs: [],
     selectedModels: [],
-    discussionModes: ['round-table'],
+    hostModelId: null, // 主持人模型 ID
+    discussionModes: ['brainstorm', 'round-table', 'debate'], // 默认顺序：头脑风暴 → 圆桌会议 → 辩论评审
     currentModeIndex: 0,
     maxRounds: 3,
 
@@ -75,15 +76,34 @@ const StateManager = {
   // 创建新讨论
   createDiscussion(requirement, models, modes) {
     const now = new Date().toISOString();
-    const modelStatuses = models.map(m => ({
-      modelId: m.id || m.name,
-      name: m.name,
-      provider: m.provider,
-      status: 'pending', // 'pending' | 'running' | 'completed' | 'error'
-      progress: 0,
-      response: null,
-      error: null
-    }));
+    const hostModelId = this.state.hostModelId;
+
+    console.log('[StateManager] createDiscussion 被调用', {
+      requirement: requirement?.substring(0, 50),
+      modelsCount: models?.length,
+      modes,
+      hostModelId
+    });
+
+    const modelStatuses = models.map(m => {
+      const modelId = m.id || m.name;
+      console.log('[StateManager] 创建模型状态:', {
+        originalId: m.id,
+        name: m.name,
+        resolvedModelId: modelId,
+        isHost: modelId === hostModelId
+      });
+      return {
+        modelId: modelId,
+        name: m.name,
+        provider: m.provider,
+        status: 'pending', // 'pending' | 'running' | 'completed' | 'error'
+        progress: 0,
+        response: null,
+        error: null,
+        isHost: modelId === hostModelId // 标记主持人模型
+      };
+    });
 
     // 支持单模式字符串或多模式数组
     const modesArray = Array.isArray(modes) ? modes : [modes];
@@ -158,13 +178,39 @@ const StateManager = {
 
   // 更新模型状态
   updateModelStatus(discussionId, modelId, statusUpdate) {
-    const discussion = this.state.discussions.find(d => d.id === discussionId);
-    if (!discussion) return null;
+    console.log('[StateManager] updateModelStatus 被调用', {
+      discussionId,
+      modelId,
+      statusUpdate
+    });
 
-    const model = discussion.models.find(m => m.modelId === modelId);
-    if (!model) return null;
+    const discussion = this.state.discussions.find(d => d.id === discussionId);
+    if (!discussion) {
+      console.warn('[StateManager] 未找到讨论:', discussionId);
+      console.log('[StateManager] 当前所有讨论ID:', this.state.discussions.map(d => d.id));
+      return null;
+    }
+
+    console.log('[StateManager] 讨论中的模型:', discussion.models.map(m => ({ modelId: m.modelId, name: m.name })));
+
+    // 首先尝试通过 modelId 匹配
+    let model = discussion.models.find(m => m.modelId === modelId);
+
+    // 如果找不到，尝试通过 name 匹配（作为 fallback）
+    if (!model) {
+      console.log('[StateManager] 通过 modelId 未找到，尝试通过 name 匹配');
+      model = discussion.models.find(m => m.name === modelId || m.modelId === m.name);
+    }
+
+    if (!model) {
+      console.warn('[StateManager] 未找到模型:', modelId);
+      console.log('[StateManager] 查找的 modelId:', modelId);
+      console.log('[StateManager] 讨论中所有 modelId:', discussion.models.map(m => m.modelId));
+      return null;
+    }
 
     Object.assign(model, statusUpdate);
+    console.log('[StateManager] 模型状态已更新:', { modelId, status: model.status, progress: model.progress });
 
     // 重新计算整体进度
     const totalProgress = discussion.models.reduce((sum, m) => sum + (m.progress || 0), 0);
@@ -348,8 +394,9 @@ const StateManager = {
   // 加载选中的模型
   async loadSelectedModels() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['selectedModels'], (result) => {
+      chrome.storage.local.get(['selectedModels', 'hostModelId'], (result) => {
         this.state.selectedModels = result.selectedModels || [];
+        this.state.hostModelId = result.hostModelId || null;
         resolve(this.state.selectedModels);
       });
     });
@@ -359,6 +406,30 @@ const StateManager = {
   async saveSelectedModels() {
     return new Promise((resolve) => {
       chrome.storage.local.set({ selectedModels: this.state.selectedModels }, resolve);
+    });
+  },
+
+  // 设置主持人模型
+  setHostModel(modelId) {
+    this.state.hostModelId = modelId;
+    this.saveHostModel();
+    this.notify('hostModelId', modelId);
+  },
+
+  // 加载主持人模型
+  async loadHostModel() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['hostModelId'], (result) => {
+        this.state.hostModelId = result.hostModelId || null;
+        resolve(this.state.hostModelId);
+      });
+    });
+  },
+
+  // 保存主持人模型
+  async saveHostModel() {
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ hostModelId: this.state.hostModelId }, resolve);
     });
   },
 

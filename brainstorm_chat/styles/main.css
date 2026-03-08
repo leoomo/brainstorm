@@ -619,6 +619,113 @@ body {
   color: var(--text-tertiary);
 }
 
+/* 主持人标记 */
+.model-chip.is-host {
+  border-color: var(--warning-color);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.08) 100%);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3);
+}
+
+.model-chip.is-host .model-chip-check {
+  background: var(--warning-color);
+}
+
+/* 主持人指示器 - 当前主持人 */
+.host-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 2px 8px;
+  background: var(--warning-color);
+  color: white;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.host-indicator:hover {
+  background: #d97706;
+  transform: scale(1.02);
+}
+
+.host-indicator .host-icon {
+  width: 12px;
+  height: 12px;
+  stroke: white;
+}
+
+.host-indicator .host-label {
+  letter-spacing: 0.5px;
+}
+
+/* 设为主持人按钮 */
+.set-host-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--warning-color);
+  color: var(--warning-color);
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: 0.5px;
+}
+
+.set-host-btn:hover {
+  background: var(--warning-color);
+  color: white;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.set-host-btn:active {
+  transform: scale(0.98);
+}
+
+.set-host-btn .host-icon {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+}
+
+.set-host-btn .host-label {
+  letter-spacing: 0.5px;
+}
+
+.host-hint {
+  font-size: 11px;
+  color: var(--warning-color);
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+/* 主持人消息样式 */
+.message.host {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+  border-left: 3px solid var(--warning-color);
+}
+
+.message.host .avatar {
+  background: var(--warning-color);
+}
+
+.host-badge-inline {
+  font-size: 12px;
+  background: var(--warning-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
 .model-chip-check {
   width: 16px;
   height: 16px;
@@ -2056,6 +2163,94 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   color: var(--text-primary);
 }
 
+/* 主持人汇总样式 */
+.output-message.host-summary {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+  border-left: 3px solid var(--warning-color);
+  margin-top: 12px;
+}
+
+.output-message.host-summary .model-badge.host {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: white;
+  background: var(--warning-color);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.output-message.host-summary .badge-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.host-stage {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-left: 8px;
+  background: var(--hover-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* 主持人模型区域 */
+.detail-host-section {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.03));
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.detail-host-section .section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--warning-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.detail-model-item.host {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.detail-model-item.host .model-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-model-item.host .host-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--warning-color);
+}
+
+.detail-model-item.host .model-progress {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.detail-model-item.host .progress-fill {
+  background: var(--warning-color);
+}
+
+.detail-model-item.host.running .model-status-text {
+  color: var(--warning-color);
+  font-weight: 500;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
 /* 适配底部面板的主内容区域 */
 #main-view {
   padding-bottom: 40px;
@@ -2640,4 +2835,303 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   .mode-chips {
     flex-wrap: wrap;
   }
+}
+
+/* ========== Timeline Log Styles (v2.0) ========== */
+
+/* Timeline Container */
+.discussion-timeline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 11px;
+}
+
+/* Compact Header */
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.timeline-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.timeline-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.round-badge {
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.progress-mini {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status Bar */
+.status-bar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  overflow-x: auto;
+}
+
+.status-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.status-bar::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.status-chip.running {
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.status-chip.completed {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.status-chip.error {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.status-chip.host {
+  border: 1px solid var(--warning-color);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.status-chip.running .chip-dot {
+  background: var(--primary-color);
+  animation: chip-pulse 1.5s infinite;
+}
+
+.status-chip.completed .chip-dot {
+  background: var(--success-color);
+}
+
+.status-chip.error .chip-dot {
+  background: var(--danger-color);
+}
+
+.status-chip.host .chip-dot {
+  background: var(--warning-color);
+}
+
+.chip-name {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Timeline Log */
+.timeline-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+  background: var(--bg-primary);
+}
+
+.timeline-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+.timeline-log::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.tl-event {
+  display: grid;
+  grid-template-columns: 56px 72px 1fr auto;
+  gap: 8px;
+  padding: 5px 12px;
+  align-items: start;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  transition: background 0.15s ease;
+}
+
+[data-theme="dark"] .tl-event {
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+.tl-event:hover {
+  background: var(--hover-bg);
+}
+
+.tl-event:last-child {
+  border-bottom: none;
+}
+
+.tl-time {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+
+.tl-actor {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-actor.host {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--warning-color);
+}
+
+.icon-mini {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+.tl-action {
+  color: var(--text-primary);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-action.response-preview {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.tl-status {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.tl-status.running {
+  background: var(--primary-color);
+  animation: chip-pulse 1.5s infinite;
+}
+
+.tl-status.completed {
+  background: var(--success-color);
+}
+
+.tl-status.error {
+  background: var(--danger-color);
+}
+
+/* Host Summary Event */
+.tl-event.host-summary {
+  grid-template-columns: 56px 72px 1fr;
+  background: rgba(245, 158, 11, 0.06);
+  border-left: 3px solid var(--warning-color);
+  padding: 8px 12px;
+  margin: 4px 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.tl-event.host-summary:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.tl-stage {
+  color: var(--warning-color);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.tl-summary {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  font-size: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Empty State */
+.timeline-empty {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* Animations */
+@keyframes chip-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+/* Dark mode timeline adjustments */
+[data-theme="dark"] .timeline-header {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .tl-event.host-summary {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+[data-theme="dark"] .status-chip.running {
+  background: rgba(14, 165, 233, 0.15);
+}
+
+[data-theme="dark"] .status-chip.completed {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+[data-theme="dark"] .status-chip.error {
+  background: rgba(239, 68, 68, 0.15);
 }
