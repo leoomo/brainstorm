@@ -1,9 +1,6 @@
 // AI 讨论助手 - Background Service Worker
 'use strict';
 
-// 消息端口管理
-let messagePort = null;
-
 // 侧边栏设置
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -139,12 +136,17 @@ ${previousMessages.map(m => `- ${m.model}: ${m.content.substring(0, 300)}...`).j
 
 // 发送流式消息到 popup
 function sendStreamMessage(model, content, isThinking) {
-  if (messagePort) {
-    messagePort.postMessage({
-      type: 'STREAM_MESSAGE',
-      data: { model, content, isThinking }
-    });
-  }
+  // 发送消息到侧边栏
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        type: 'STREAM_MESSAGE',
+        data: { model, content, isThinking }
+      }).catch(err => {
+        console.warn('发送消息失败:', err.message);
+      });
+    }
+  });
 }
 
 // 调用模型 API
