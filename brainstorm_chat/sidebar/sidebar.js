@@ -14,7 +14,14 @@
     historyView: document.getElementById('history-view'),
     documentView: document.getElementById('document-view'),
 
-    // 项目管理
+    // 新 Header 项目管理
+    headerProject: document.getElementById('header-project'),
+    headerProjectName: document.getElementById('header-project-name'),
+    headerDropdown: document.getElementById('header-dropdown'),
+    headerDropdownList: document.getElementById('header-dropdown-list'),
+    newDiscussionBtn: document.getElementById('new-discussion-btn'),
+
+    // 项目管理 (兼容旧代码)
     projectCurrent: document.getElementById('project-current'),
     projectDropdown: document.getElementById('project-dropdown'),
     projectList: document.getElementById('project-list'),
@@ -31,13 +38,23 @@
     discussionSection: document.getElementById('discussion-section'),
     discussionList: document.getElementById('discussion-list'),
     discussionListCount: document.getElementById('discussion-list-count'),
+    discussionListContainer: document.getElementById('discussion-list-container'),
+    emptyState: document.getElementById('empty-state'),
+    completedDivider: document.getElementById('completed-divider'),
+    activeDiscussionsSection: document.getElementById('active-discussions-section'),
+    completedDiscussionsSection: document.getElementById('completed-discussions-section'),
 
-    // 主界面
+    // 主界面 - 新输入区
     requirementInput: document.getElementById('requirement-input'),
+    inputArea: document.getElementById('input-area'),
+    inputExpanded: document.getElementById('input-expanded'),
     modelList: document.getElementById('model-list'),
+    modelChips: document.getElementById('model-chips'),
+    modeChips: document.getElementById('mode-chips'),
     modelCount: document.getElementById('model-count'),
     modeCount: document.getElementById('mode-count'),
     startBtn: document.getElementById('start-btn'),
+    expandedStartBtn: document.getElementById('expanded-start-btn'),
     configBtn: document.getElementById('config-btn'),
     historyBtn: document.getElementById('history-btn'),
 
@@ -58,6 +75,11 @@
     configForm: document.getElementById('config-form'),
     modalTitle: document.getElementById('modal-title'),
     cancelConfigBtn: document.getElementById('cancel-config-btn'),
+
+    // 主题设置
+    themeLight: document.getElementById('theme-light'),
+    themeDark: document.getElementById('theme-dark'),
+    themeAuto: document.getElementById('theme-auto'),
 
     // 历史界面
     historyBackBtn: document.getElementById('history-back-btn'),
@@ -80,16 +102,773 @@
     await loadHistory();
     await StateManager.loadSelectedModels(); // 加载保存的模型选择
     await StateManager.loadProjects(); // 加载项目
-    await StateManager.loadCurrentDiscussion(); // 加载进行中的讨论
-    initProjectSwitcher(); // 初始化项目切换器
-    renderDiscussionList(); // 渲染讨论列表
+    await StateManager.loadDiscussions(); // 加载讨论列表 (新)
+    initHeaderProjectSwitcher(); // 初始化新 Header 项目切换器
+    initInputArea(); // 初始化输入区交互
     bindEvents();
     setupMessageListener();
-    renderModelList();
+    setupRealtimeUpdates(); // 设置实时更新监听 (新)
+    renderModelChips(); // 渲染模型选择芯片 (新)
+    renderModeChips(); // 渲染模式选择芯片 (新)
     updateSelectedModels(); // 初始化模型选择状态
     updateSelectedModes(); // 初始化模式选择状态
     updateStartButton();
-    restoreDiscussionIfNeeded(); // 恢复进行中的讨论
+    renderDashboard(); // 渲染仪表盘 (新)
+    restorePanelState(); // 恢复面板状态 (新)
+    initThemeSelector(); // 初始化主题选择器 (新)
+  }
+
+  // ========== 新 UI 初始化函数 ==========
+
+  // 初始化 Header 项目切换器
+  function initHeaderProjectSwitcher() {
+    renderHeaderProjectList();
+    updateHeaderProjectDisplay();
+    bindHeaderProjectEvents();
+  }
+
+  function bindHeaderProjectEvents() {
+    // 点击 Header 项目名展开/收起下拉
+    if (elements.headerProject) {
+      elements.headerProject.addEventListener('click', (e) => {
+        e.stopPropagation();
+        elements.headerProject.classList.toggle('active');
+        elements.headerDropdown.classList.toggle('show');
+      });
+    }
+
+    // 点击其他地方关闭下拉
+    document.addEventListener('click', () => {
+      if (elements.headerDropdown) {
+        elements.headerDropdown.classList.remove('show');
+      }
+      if (elements.headerProject) {
+        elements.headerProject.classList.remove('active');
+      }
+    });
+
+    // 新建项目按钮
+    if (elements.newProjectBtn) {
+      elements.newProjectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        elements.projectNameInput.value = '';
+        elements.projectModal.classList.add('active');
+        elements.projectNameInput.focus();
+        elements.headerDropdown.classList.remove('show');
+      });
+    }
+
+    // 新建讨论按钮
+    if (elements.newDiscussionBtn) {
+      elements.newDiscussionBtn.addEventListener('click', () => {
+        focusInput();
+      });
+    }
+
+    // 取消项目弹窗
+    if (elements.cancelProjectBtn) {
+      elements.cancelProjectBtn.addEventListener('click', () => {
+        elements.projectModal.classList.remove('active');
+      });
+    }
+
+    // 提交项目表单
+    if (elements.projectForm) {
+      elements.projectForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = elements.projectNameInput.value.trim();
+        if (name) {
+          const project = await StateManager.addProject(name);
+          await StateManager.switchProject(project.id);
+          renderHeaderProjectList();
+          updateHeaderProjectDisplay();
+          elements.projectModal.classList.remove('active');
+        }
+      });
+    }
+
+    // 删除项目按钮
+    if (elements.deleteProjectBtn) {
+      elements.deleteProjectBtn.addEventListener('click', async () => {
+        const currentProject = StateManager.getCurrentProject();
+        if (currentProject && confirm(`确定要删除项目"${currentProject.name}"吗？该项目的所有讨论将被删除。`)) {
+          await StateManager.deleteProject(currentProject.id);
+          renderHeaderProjectList();
+          updateHeaderProjectDisplay();
+        }
+      });
+    }
+  }
+
+  function renderHeaderProjectList() {
+    if (!elements.headerDropdownList) return;
+
+    const projects = StateManager.state.projects;
+    const currentId = StateManager.state.currentProjectId;
+
+    elements.headerDropdownList.innerHTML = projects.map(project => `
+      <div class="project-item ${project.id === currentId ? 'active' : ''}" data-id="${project.id}">
+        <span class="project-item-name">${escapeHtml(project.name)}</span>
+        <span class="project-item-count">${project.discussions.length}次</span>
+      </div>
+    `).join('');
+
+    // 绑定点击项目切换
+    elements.headerDropdownList.querySelectorAll('.project-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const projectId = item.dataset.id;
+        await StateManager.switchProject(projectId);
+        renderHeaderProjectList();
+        updateHeaderProjectDisplay();
+        elements.headerDropdown.classList.remove('show');
+        renderDashboard(); // 切换项目后刷新仪表盘
+      });
+    });
+  }
+
+  function updateHeaderProjectDisplay() {
+    if (!elements.headerProjectName) return;
+
+    const project = StateManager.getCurrentProject();
+    if (project) {
+      elements.headerProjectName.textContent = project.name;
+    }
+  }
+
+  // 初始化输入区交互
+  function initInputArea() {
+    if (!elements.requirementInput) return;
+
+    // 输入框获得焦点时展开
+    elements.requirementInput.addEventListener('focus', () => {
+      expandInputArea();
+    });
+
+    // 输入内容变化时更新按钮状态
+    elements.requirementInput.addEventListener('input', () => {
+      updateStartButton();
+      // 如果有内容，自动展开
+      if (elements.requirementInput.value.trim().length > 0) {
+        expandInputArea();
+      }
+    });
+
+    // 展开区域中的开始按钮
+    if (elements.expandedStartBtn) {
+      elements.expandedStartBtn.addEventListener('click', startDiscussion);
+    }
+  }
+
+  function expandInputArea() {
+    if (elements.inputExpanded) {
+      elements.inputExpanded.style.display = 'block';
+    }
+  }
+
+  function collapseInputArea() {
+    if (elements.inputExpanded) {
+      elements.inputExpanded.style.display = 'none';
+    }
+  }
+
+  function focusInput() {
+    if (elements.requirementInput) {
+      elements.requirementInput.focus();
+    }
+  }
+
+  // 渲染模式选择芯片 (新)
+  function renderModeChips() {
+    if (!elements.modeChips) return;
+
+    const modeChips = elements.modeChips.querySelectorAll('.mode-chip');
+    modeChips.forEach(chip => {
+      const checkbox = chip.querySelector('input');
+      if (checkbox) {
+        // 设置初始状态
+        if (checkbox.checked) {
+          chip.classList.add('active');
+        }
+
+        chip.addEventListener('click', (e) => {
+          // 如果点击的不是 checkbox 本身，切换 checkbox
+          if (e.target.tagName !== 'INPUT') {
+            checkbox.checked = !checkbox.checked;
+          }
+          chip.classList.toggle('active', checkbox.checked);
+          updateSelectedModes();
+          updateModeOrderDisplay();
+        });
+      }
+    });
+
+    // 初始化显示
+    updateModeOrderDisplay();
+  }
+
+  // 更新模式顺序显示
+  function updateModeOrderDisplay() {
+    if (!elements.modeChips) return;
+
+    const selectedModes = [];
+    const modeNames = {
+      'round-table': '圆桌会议',
+      'brainstorm': '头脑风暴',
+      'debate': '辩论评审'
+    };
+
+    // 按照选择的顺序收集模式
+    elements.modeChips.querySelectorAll('.mode-chip').forEach(chip => {
+      const checkbox = chip.querySelector('input');
+      const orderSpan = chip.querySelector('.mode-order');
+
+      if (checkbox && checkbox.checked) {
+        selectedModes.push({
+          mode: checkbox.value,
+          name: chip.querySelector('.mode-name')?.textContent || modeNames[checkbox.value] || checkbox.value
+        });
+
+        // 更新顺序数字
+        if (orderSpan) {
+          orderSpan.textContent = selectedModes.length;
+        }
+      } else {
+        // 未选中的重置顺序
+        if (orderSpan) {
+          const originalOrder = chip.dataset.order || '';
+          orderSpan.textContent = originalOrder;
+        }
+      }
+    });
+
+    // 更新预览区域
+    const previewModes = document.getElementById('preview-modes');
+    if (previewModes) {
+      if (selectedModes.length > 0) {
+        previewModes.innerHTML = selectedModes.map(m => m.name).join('<span class="mode-arrow">→</span>');
+      } else {
+        previewModes.textContent = '请选择至少一个模式';
+      }
+    }
+  }
+
+  // 渲染模型选择芯片 (新)
+  function renderModelChips() {
+    if (!elements.modelChips) return;
+
+    const enabledModels = state.apiConfigs.filter(c => c.validated);
+    const disabledModels = state.apiConfigs.filter(c => !c.validated);
+    const savedSelection = state.selectedModels || [];
+
+    // 获取初始选择状态
+    const getInitialSelection = (configId) => {
+      if (savedSelection.includes(configId)) return true;
+      if (savedSelection.length === 0 && enabledModels.find(m => m.id === configId)) return true;
+      return false;
+    };
+
+    // 渲染已启用的模型
+    let html = enabledModels.map(config => {
+      const isSelected = getInitialSelection(config.id);
+      return `
+        <div class="model-chip ${isSelected ? 'selected' : ''}" data-id="${config.id}">
+          <span class="model-chip-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </span>
+          <span class="model-chip-name">${escapeHtml(config.name)}</span>
+        </div>
+      `;
+    }).join('');
+
+    // 渲染未启用的模型
+    html += disabledModels.map(config => `
+      <div class="model-chip disabled" data-id="${config.id}" title="该模型未启用，请在设置中启用">
+        <span class="model-chip-name">${escapeHtml(config.name)}</span>
+      </div>
+    `).join('');
+
+    elements.modelChips.innerHTML = html;
+
+    // 绑定点击事件
+    elements.modelChips.querySelectorAll('.model-chip:not(.disabled)').forEach(chip => {
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('selected');
+        updateSelectedModelsFromChips();
+        StateManager.saveSelectedModels();
+      });
+    });
+
+    // 同步状态
+    updateSelectedModelsFromChips();
+  }
+
+  // 从芯片更新已选模型
+  function updateSelectedModelsFromChips() {
+    if (!elements.modelChips) return;
+
+    state.selectedModels = Array.from(elements.modelChips.querySelectorAll('.model-chip.selected'))
+      .map(chip => chip.dataset.id);
+    updateStartButton();
+  }
+
+  // 初始化主题选择器
+  function initThemeSelector() {
+    const themeOptions = document.querySelectorAll('.theme-option');
+    const savedTheme = localStorage.getItem('theme') || 'light';
+
+    // 设置当前主题
+    setTheme(savedTheme);
+    updateThemeSelector(savedTheme);
+
+    themeOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        const theme = option.dataset.theme;
+        setTheme(theme);
+        updateThemeSelector(theme);
+      });
+    });
+  }
+
+  function updateThemeSelector(theme) {
+    const themeOptions = document.querySelectorAll('.theme-option');
+    themeOptions.forEach(option => {
+      option.classList.toggle('active', option.dataset.theme === theme);
+    });
+  }
+
+  // ========== 新功能：仪表盘渲染 ==========
+
+  function renderDashboard() {
+    renderActiveDiscussionsV2();
+    renderCompletedDiscussionsV2();
+    updateEmptyState();
+  }
+
+  // 更新空状态显示
+  function updateEmptyState() {
+    const activeDiscussions = StateManager.getActiveDiscussions();
+    const completedDiscussions = StateManager.getCompletedDiscussions();
+
+    if (elements.emptyState) {
+      elements.emptyState.style.display =
+        (activeDiscussions.length === 0 && completedDiscussions.length === 0) ? 'block' : 'none';
+    }
+
+    if (elements.completedDivider) {
+      elements.completedDivider.style.display = completedDiscussions.length > 0 ? 'flex' : 'none';
+    }
+  }
+
+  // 渲染活跃讨论 (新版本)
+  function renderActiveDiscussionsV2() {
+    const container = elements.activeDiscussionsSection;
+    if (!container) return;
+
+    const activeDiscussions = StateManager.getActiveDiscussions();
+
+    if (activeDiscussions.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = activeDiscussions.map(discussion => {
+      const statusClass = discussion.status || 'running';
+      const statusText = getStatusText(discussion.status);
+      const timeText = formatRelativeTime(discussion.updatedAt || discussion.createdAt);
+
+      return `
+        <div class="discussion-item-v2 ${discussion.id === StateManager.state.activeDiscussionId ? 'active' : ''}"
+             data-id="${discussion.id}">
+          <div class="item-status">
+            <span class="status-dot ${statusClass}"></span>
+          </div>
+          <div class="item-content">
+            <div class="item-title">${escapeHtml(discussion.title || '未命名讨论')}</div>
+            <div class="item-meta">${statusText} · 第${discussion.currentRound || 1}/${discussion.totalRounds || 3}轮</div>
+          </div>
+          <div class="item-time">${timeText}</div>
+        </div>
+      `;
+    }).join('');
+
+    // 绑定点击事件
+    container.querySelectorAll('.discussion-item-v2').forEach(item => {
+      item.addEventListener('click', () => {
+        const discussionId = item.dataset.id;
+        StateManager.setActiveDiscussion(discussionId);
+        expandBottomPanel();
+        // 更新选中状态
+        container.querySelectorAll('.discussion-item-v2').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+      });
+    });
+  }
+
+  // 渲染已完成讨论 (新版本)
+  function renderCompletedDiscussionsV2() {
+    const container = elements.completedDiscussionsSection;
+    if (!container) return;
+
+    const completedDiscussions = StateManager.getCompletedDiscussions().slice(0, 10);
+
+    if (completedDiscussions.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = completedDiscussions.map(discussion => {
+      const timeText = formatRelativeTime(discussion.updatedAt || discussion.createdAt);
+
+      return `
+        <div class="discussion-item-v2"
+             data-id="${discussion.id}">
+          <div class="item-status">
+            <span class="status-dot completed"></span>
+          </div>
+          <div class="item-content">
+            <div class="item-title">${escapeHtml(discussion.title || '未命名讨论')}</div>
+            <div class="item-meta">已完成 · ${discussion.totalRounds || 3}轮</div>
+          </div>
+          <div class="item-time">${timeText}</div>
+        </div>
+      `;
+    }).join('');
+
+    // 绑定点击事件
+    container.querySelectorAll('.discussion-item-v2').forEach(item => {
+      item.addEventListener('click', async () => {
+        const discussionId = item.dataset.id;
+        // 查看已完成的讨论文档
+        const discussion = StateManager.state.discussions.find(d => d.id === discussionId);
+        if (discussion && discussion.finalDoc) {
+          state.currentDiscussion = discussion;
+          elements.documentContent.innerHTML = marked.parse(discussion.finalDoc);
+          switchView('document');
+        } else {
+          showToast('该讨论暂无文档', 'info');
+        }
+      });
+    });
+  }
+
+  // 获取状态文本
+  function getStatusText(status) {
+    const texts = {
+      running: '进行中',
+      paused: '已暂停',
+      completed: '已完成',
+      error: '出错',
+      cancelled: '已取消'
+    };
+    return texts[status] || '进行中';
+  }
+
+  // 格式化相对时间
+  function formatRelativeTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diff = now - date;
+
+    if (diff < 60000) return '刚刚';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+    if (diff < 604800000) {
+      const days = Math.floor(diff / 86400000);
+      return days === 1 ? '昨天' : `${days}天前`;
+    }
+
+    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  }
+
+  // 渲染活跃讨论 (旧版本 - 兼容)
+  function renderActiveDiscussions() {
+    const container = document.getElementById('active-discussions-list');
+    if (!container) return;
+
+    const activeDiscussions = StateManager.getActiveDiscussions();
+
+    if (activeDiscussions.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <div class="empty-text">暂无进行中的讨论</div>
+          <div class="empty-subtext">输入需求开始一个新的讨论</div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = activeDiscussions.map(discussion => `
+      <discussion-card discussion-id="${discussion.id}"></discussion-card>
+    `).join('');
+
+    // 绑定卡片事件
+    container.querySelectorAll('discussion-card').forEach(card => {
+      card.addEventListener('discussion-action', handleDiscussionAction);
+      card.addEventListener('discussion-select', (e) => {
+        StateManager.setActiveDiscussion(e.detail.discussionId);
+        expandBottomPanel();
+      });
+    });
+  }
+
+  // 渲染已完成讨论 (旧版本 - 兼容)
+  function renderCompletedDiscussions() {
+    const container = document.getElementById('completed-discussions-list');
+    if (!container) return;
+
+    const completedDiscussions = StateManager.getCompletedDiscussions().slice(0, 10);
+
+    if (completedDiscussions.length === 0) {
+      container.innerHTML = '<div class="empty-state">暂无已完成讨论</div>';
+      return;
+    }
+
+    container.innerHTML = completedDiscussions.map(discussion => `
+      <discussion-card discussion-id="${discussion.id}"></discussion-card>
+    `).join('');
+
+    container.querySelectorAll('discussion-card').forEach(card => {
+      card.addEventListener('discussion-action', handleDiscussionAction);
+      card.addEventListener('discussion-select', (e) => {
+        StateManager.setActiveDiscussion(e.detail.discussionId);
+        expandBottomPanel();
+      });
+    });
+  }
+
+  // 处理讨论卡片操作
+  async function handleDiscussionAction(e) {
+    const { action, discussionId } = e.detail;
+
+    switch (action) {
+      case 'pause': {
+        const response = await chrome.runtime.sendMessage({
+          type: 'PAUSE_DISCUSSION',
+          data: { discussionId }
+        });
+        if (response?.type === 'DISCUSSION_NOT_RUNNING') {
+          showToast(response.reason || '讨论已完成', 'info');
+          // 刷新 UI 状态
+          StateManager.updateDiscussionProgress(discussionId, { status: 'completed' });
+          renderDashboard();
+        }
+        break;
+      }
+
+      case 'resume': {
+        const response = await chrome.runtime.sendMessage({
+          type: 'RESUME_DISCUSSION',
+          data: { discussionId }
+        });
+        if (response?.type === 'DISCUSSION_NOT_RUNNING') {
+          showToast(response.reason || '讨论已完成', 'info');
+          StateManager.updateDiscussionProgress(discussionId, { status: 'completed' });
+          renderDashboard();
+        }
+        break;
+      }
+
+      case 'cancel':
+        if (confirm('确定要取消这个讨论吗？')) {
+          await chrome.runtime.sendMessage({
+            type: 'CANCEL_DISCUSSION',
+            data: { discussionId }
+          });
+          StateManager.updateDiscussionProgress(discussionId, { status: 'cancelled' });
+          renderDashboard();
+        }
+        break;
+
+      case 'view':
+        StateManager.setActiveDiscussion(discussionId);
+        expandBottomPanel();
+        break;
+
+      case 'export':
+        await exportDiscussionDocument(discussionId);
+        break;
+
+      case 'restart':
+        const discussion = StateManager.state.discussions.find(d => d.id === discussionId);
+        if (discussion) {
+          elements.requirementInput.value = discussion.requirement;
+          // 切换到主视图
+          switchView('main');
+        }
+        break;
+
+      case 'retry':
+        // 重新运行出错的讨论
+        showToast('重试功能开发中...', 'info');
+        break;
+    }
+  }
+
+  // ========== 底部面板控制 ==========
+
+  function expandBottomPanel() {
+    StateManager.setPanelState('expanded');
+    const panel = document.querySelector('bottom-panel');
+    if (panel) panel.setState('expanded');
+    updateBottomPanelContent();
+  }
+
+  function collapseBottomPanel() {
+    StateManager.setPanelState('collapsed');
+    const panel = document.querySelector('bottom-panel');
+    if (panel) panel.setState('collapsed');
+  }
+
+  function toggleBottomPanel() {
+    const currentState = StateManager.state.panelState;
+    const newState = currentState === 'collapsed' ? 'expanded' : 'collapsed';
+
+    StateManager.setPanelState(newState);
+    const panel = document.querySelector('bottom-panel');
+    if (panel) panel.setState(newState);
+
+    if (newState === 'expanded') {
+      updateBottomPanelContent();
+    }
+  }
+
+  function updateBottomPanelContent() {
+    const panel = document.querySelector('bottom-panel');
+    const discussion = StateManager.getActiveDiscussion();
+    if (panel && discussion) {
+      panel.setDiscussionContent(discussion);
+    }
+  }
+
+  function restorePanelState() {
+    const panelState = StateManager.state.panelState;
+    const panel = document.querySelector('bottom-panel');
+    if (panel) {
+      panel.setState(panelState);
+    }
+  }
+
+  // ========== 实时更新监听 ==========
+
+  function setupRealtimeUpdates() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      const { type, discussionId } = message;
+
+      switch (type) {
+        case 'DISCUSSION_STARTED':
+          showToast('讨论已启动', 'success');
+          renderActiveDiscussions();
+          expandBottomPanel();
+          break;
+
+        case 'MODEL_STATUS_UPDATE':
+          StateManager.updateModelStatus(
+            discussionId,
+            message.modelId,
+            { status: message.status, progress: message.progress, response: message.response, error: message.error }
+          );
+          // 如果当前正在查看这个讨论，更新面板
+          if (StateManager.state.activeDiscussionId === discussionId) {
+            updateBottomPanelContent();
+          }
+          break;
+
+        case 'ROUND_COMPLETE':
+          // 更新讨论的消息
+          const discussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (discussion) {
+            discussion.messages.push({
+              round: message.round,
+              responses: message.results
+            });
+            discussion.currentRound = message.round + 1;
+            StateManager.saveDiscussions();
+          }
+          renderActiveDiscussions();
+          updateBottomPanelContent();
+          break;
+
+        case 'DISCUSSION_COMPLETED':
+          StateManager.updateDiscussionProgress(discussionId, { status: 'completed', progress: 100 });
+          renderDashboard();
+          showToast('讨论完成！', 'success');
+          break;
+
+        case 'DISCUSSION_ERROR':
+          StateManager.updateDiscussionProgress(discussionId, { status: 'error', error: message.error });
+          renderDashboard();
+          showToast(`讨论出错: ${message.error}`, 'error');
+          break;
+
+        case 'DISCUSSION_PAUSED':
+          StateManager.updateDiscussionProgress(discussionId, { status: 'paused' });
+          renderDashboard();
+          break;
+
+        case 'DISCUSSION_RESUMED':
+          StateManager.updateDiscussionProgress(discussionId, { status: 'running' });
+          renderDashboard();
+          break;
+
+        case 'DISCUSSION_CANCELLED':
+          StateManager.updateDiscussionProgress(discussionId, { status: 'cancelled' });
+          renderDashboard();
+          break;
+      }
+    });
+  }
+
+  // 导出讨论文档
+  async function exportDiscussionDocument(discussionId) {
+    const discussion = StateManager.state.discussions.find(d => d.id === discussionId);
+    if (!discussion) return;
+
+    const messages = discussion.messages.flatMap(m => m.responses.map(r => ({
+      model: r.model,
+      content: r.content
+    })));
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'GENERATE_DOCUMENT',
+        data: {
+          messages,
+          requirement: discussion.requirement
+        }
+      });
+
+      if (response?.data?.document) {
+        // 显示文档预览
+        state.currentDiscussion = {
+          ...discussion,
+          finalDoc: response.data.document
+        };
+        elements.documentContent.innerHTML = marked.parse(response.data.document);
+        switchView('document');
+      }
+    } catch (error) {
+      showToast('生成文档失败', 'error');
+    }
+  }
+
+  // 兼容旧代码
+  // 恢复进行中的讨论
+  function restoreDiscussionIfNeeded() {
+    // 已由新的状态系统处理
+  }
+
+  // 保存进行中的讨论
+  async function saveActiveDiscussion() {
+    // 已由 StateManager 自动处理
+  }
+
+  // 清除进行中的讨论
+  async function clearActiveDiscussion() {
+    // 已由 StateManager 自动处理
   }
 
   // 主题管理
@@ -283,9 +1062,11 @@
 
   // 恢复进行中的讨论
   function restoreDiscussionIfNeeded() {
-    if (state.currentDiscussion && state.isDiscussing) {
-      // 有进行中的讨论，更新UI显示
+    if (state.isDiscussing) {
+      // 有进行中的讨论，重置状态并显示提示
+      StateManager.clearCurrentDiscussion();
       renderDiscussionList();
+      showToast('检测到未完成的讨论，已重置状态', 'info');
     }
   }
 
@@ -334,21 +1115,26 @@
     elements.requirementInput.addEventListener('input', updateStartButton);
     elements.startBtn.addEventListener('click', startDiscussion);
     elements.configBtn.addEventListener('click', () => switchView('config'));
-    elements.historyBtn.addEventListener('click', () => switchView('history'));
+    if (elements.historyBtn) {
+      elements.historyBtn.addEventListener('click', () => switchView('history'));
+    }
 
-    // 讨论模式（多选）
+    // 讨论模式（多选）- 兼容旧版
     document.querySelectorAll('input[name="mode"]').forEach(checkbox => {
       // 添加初始选中状态
       if (checkbox.checked) {
-        checkbox.closest('.radio-card').classList.add('selected');
+        const parent = checkbox.closest('.radio-card') || checkbox.closest('.mode-chip');
+        if (parent) parent.classList.add('selected');
       }
 
       checkbox.addEventListener('change', () => {
-        const card = checkbox.closest('.radio-card');
-        if (checkbox.checked) {
-          card.classList.add('selected');
-        } else {
-          card.classList.remove('selected');
+        const card = checkbox.closest('.radio-card') || checkbox.closest('.mode-chip');
+        if (card) {
+          if (checkbox.checked) {
+            card.classList.add('selected');
+          } else {
+            card.classList.remove('selected');
+          }
         }
         updateSelectedModes();
       });
@@ -376,7 +1162,9 @@
     elements.configForm.addEventListener('submit', saveConfig);
 
     // 历史界面
-    elements.historyBackBtn.addEventListener('click', () => switchView('main'));
+    if (elements.historyBackBtn) {
+      elements.historyBackBtn.addEventListener('click', () => switchView('main'));
+    }
 
     // 文档界面
     elements.docBackBtn.addEventListener('click', () => switchView('discussion'));
@@ -397,6 +1185,8 @@
       if (e.key === 'Escape') {
         if (elements.configModal.classList.contains('active')) {
           closeConfigModal();
+        } else if (elements.projectModal && elements.projectModal.classList.contains('active')) {
+          elements.projectModal.classList.remove('active');
         } else if (state.currentView === 'discussion') {
           elements.backBtn.click();
         } else if (state.currentView === 'config' || state.currentView === 'history' || state.currentView === 'document') {
@@ -504,28 +1294,36 @@
   // 加载历史
   const loadHistory = StateManager.loadHistory.bind(StateManager);
 
-  // 渲染模型列表 - 芯片式设计
+  // 渲染模型列表 - 芯片式设计 (兼容旧版)
   function renderModelList() {
+    // 如果有新的模型芯片容器，使用新版本
+    if (elements.modelChips) {
+      renderModelChips();
+      return;
+    }
+
     // 空状态：没有配置任何模型
     if (state.apiConfigs.length === 0) {
-      elements.modelList.innerHTML = `
-        <div class="models-empty">
-          <div class="models-empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="22"/>
-            </svg>
+      if (elements.modelList) {
+        elements.modelList.innerHTML = `
+          <div class="models-empty">
+            <div class="models-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+              </svg>
+            </div>
+            <p class="models-empty-text">尚未配置任何模型</p>
+            <span class="models-empty-action" id="add-model-from-list">点击添加模型</span>
           </div>
-          <p class="models-empty-text">尚未配置任何模型</p>
-          <span class="models-empty-action" id="add-model-from-list">点击添加模型</span>
-        </div>
-      `;
+        `;
 
-      // 绑定添加模型事件
-      document.getElementById('add-model-from-list')?.addEventListener('click', () => {
-        showConfigModal();
-      });
+        // 绑定添加模型事件
+        document.getElementById('add-model-from-list')?.addEventListener('click', () => {
+          showConfigModal();
+        });
+      }
 
       // 更新按钮状态
       state.selectedModels = [];
@@ -570,23 +1368,25 @@
       </div>
     `).join('');
 
-    elements.modelList.innerHTML = enabledChips + disabledChips;
+    if (elements.modelList) {
+      elements.modelList.innerHTML = enabledChips + disabledChips;
 
-    // 添加提示文字
-    const hint = document.createElement('p');
-    hint.className = 'model-selection-hint';
-    hint.textContent = '点击可用模型可取消选择';
-    elements.modelList.appendChild(hint);
+      // 添加提示文字
+      const hint = document.createElement('p');
+      hint.className = 'model-selection-hint';
+      hint.textContent = '点击可用模型可取消选择';
+      elements.modelList.appendChild(hint);
 
-    // 绑定点击事件 - 已启用的模型可点击切换
-    elements.modelList.querySelectorAll('.model-chip:not(.disabled)').forEach(chip => {
-      chip.addEventListener('click', () => {
-        chip.classList.toggle('selected');
-        updateSelectedModels();
-        // 保存选择到存储（包括清空选择的情况）
-        StateManager.saveSelectedModels();
+      // 绑定点击事件 - 已启用的模型可点击切换
+      elements.modelList.querySelectorAll('.model-chip:not(.disabled)').forEach(chip => {
+        chip.addEventListener('click', () => {
+          chip.classList.toggle('selected');
+          updateSelectedModels();
+          // 保存选择到存储（包括清空选择的情况）
+          StateManager.saveSelectedModels();
+        });
       });
-    });
+    }
 
     // 同步状态
     updateSelectedModels();
@@ -594,9 +1394,15 @@
 
   // 更新已选模型
   function updateSelectedModels() {
-    // 从 UI 选中状态获取（不是从 config.enabled，这样用户可以临时取消选择）
-    state.selectedModels = Array.from(elements.modelList.querySelectorAll('.model-chip.selected'))
-      .map(chip => chip.dataset.id);
+    // 优先从新的芯片容器获取
+    if (elements.modelChips) {
+      state.selectedModels = Array.from(elements.modelChips.querySelectorAll('.model-chip.selected'))
+        .map(chip => chip.dataset.id);
+    } else if (elements.modelList) {
+      // 兼容旧版
+      state.selectedModels = Array.from(elements.modelList.querySelectorAll('.model-chip.selected'))
+        .map(chip => chip.dataset.id);
+    }
 
     // 更新选中计数徽章
     if (elements.modelCount) {
@@ -614,8 +1420,22 @@
 
   // 更新已选讨论模式
   function updateSelectedModes() {
-    state.discussionModes = Array.from(document.querySelectorAll('input[name="mode"]:checked'))
-      .map(input => input.value);
+    // 按照芯片在 DOM 中的顺序收集选中的模式
+    // 这样可以保证顺序的一致性
+    const modeChipsContainer = elements.modeChips || document.querySelector('.mode-chips');
+    if (modeChipsContainer) {
+      state.discussionModes = [];
+      modeChipsContainer.querySelectorAll('.mode-chip').forEach(chip => {
+        const checkbox = chip.querySelector('input');
+        if (checkbox && checkbox.checked) {
+          state.discussionModes.push(checkbox.value);
+        }
+      });
+    } else {
+      // 兼容旧版
+      state.discussionModes = Array.from(document.querySelectorAll('input[name="mode"]:checked'))
+        .map(input => input.value);
+    }
 
     // 更新选中计数徽章
     if (elements.modeCount) {
@@ -631,70 +1451,135 @@
     updateStartButton();
   }
 
+  // 更新模式顺序显示
+  function updateModeOrderDisplay() {
+    if (!elements.modeChips) return;
+
+    const selectedModes = [];
+    const modeNames = {
+      'round-table': '圆桌会议',
+      'brainstorm': '头脑风暴',
+      'debate': '辩论评审'
+    };
+
+    // 按照芯片在 DOM 中的顺序收集选中的模式
+    elements.modeChips.querySelectorAll('.mode-chip').forEach(chip => {
+      const checkbox = chip.querySelector('input');
+      const orderSpan = chip.querySelector('.mode-order');
+
+      if (checkbox && checkbox.checked) {
+        selectedModes.push({
+          mode: checkbox.value,
+          name: chip.querySelector('.mode-name')?.textContent || modeNames[checkbox.value] || checkbox.value
+        });
+
+        // 更新顺序数字
+        if (orderSpan) {
+          orderSpan.textContent = selectedModes.length;
+        }
+      } else {
+        // 未选中的重置顺序为原始位置
+        if (orderSpan) {
+          const chipIndex = Array.from(elements.modeChips.querySelectorAll('.mode-chip')).indexOf(chip);
+          orderSpan.textContent = chipIndex + 1;
+        }
+      }
+    });
+
+    // 更新预览区域
+    const previewModes = document.getElementById('preview-modes');
+    if (previewModes) {
+      if (selectedModes.length > 0) {
+        previewModes.innerHTML = selectedModes.map(m => m.name).join('<span class="mode-arrow">→</span>');
+      } else {
+        previewModes.textContent = '请选择至少一个模式';
+      }
+    }
+  }
+
   // 更新开始按钮状态
   function updateStartButton() {
-    const hasRequirement = elements.requirementInput.value.trim().length > 0;
+    const hasRequirement = elements.requirementInput && elements.requirementInput.value.trim().length > 0;
     const hasSelectedModels = state.selectedModels.length > 0;
     const hasSelectedModes = state.discussionModes.length > 0;
-    elements.startBtn.disabled = !(hasRequirement && hasSelectedModels && hasSelectedModes);
+
+    const canStart = hasRequirement && hasSelectedModels && hasSelectedModes;
+
+    if (elements.startBtn) {
+      elements.startBtn.disabled = !canStart;
+    }
+
+    // 更新展开区域中的按钮
+    if (elements.expandedStartBtn) {
+      elements.expandedStartBtn.disabled = !canStart;
+    }
   }
 
   // 开始讨论
   async function startDiscussion() {
-    const requirement = elements.requirementInput.value.trim();
+    const requirement = elements.requirementInput ? elements.requirementInput.value.trim() : '';
     if (!requirement || state.selectedModels.length === 0 || state.discussionModes.length === 0) return;
 
-    // 检查是否有进行中的讨论
-    if (state.currentDiscussion && state.isDiscussing) {
-      const choice = confirm('已有进行中的讨论，是否新建讨论？\n\n确定：新建讨论（当前讨论将被中断）\n取消：继续当前讨论');
-      if (!choice) {
-        // 继续当前讨论
-        switchView('discussion');
-        renderDiscussionMessages();
-        return;
-      }
-      // 用户选择新建，清除进行中的讨论
-      await clearActiveDiscussion();
+    // 检查并发限制
+    if (!StateManager.canStartNewDiscussion()) {
+      showToast(`最多同时进行 ${StateManager.state.maxConcurrentDiscussions} 个讨论，请先等待或暂停其他讨论`, 'warning');
+      return;
     }
 
-    // 初始化讨论状态
-    state.isDiscussing = true;
-    state.currentRound = 1;
-    state.currentModeIndex = 0;
-    state.messages = [];
+    // 获取选中的模型配置
+    const selectedConfigs = state.selectedModels
+      .map(id => state.apiConfigs.find(c => c.id === id))
+      .filter(Boolean);
 
-    // 重置模型状态指示
-    if (elements.modelStatus) {
-      const statusDot = elements.modelStatus.querySelector('.model-status-dot');
-      const statusText = elements.modelStatus.querySelector('.model-status-text');
-      statusDot.className = 'model-status-dot waiting';
-      statusText.textContent = '等待模型响应...';
+    if (selectedConfigs.length === 0) {
+      showToast('请先配置并选择模型', 'error');
+      return;
     }
 
-    // 获取当前项目的讨论标题
-    const project = StateManager.getCurrentProject();
-    const discussionCount = project ? project.discussions.length + 1 : 1;
-    const discussionTitle = project
-      ? StateManager.getDiscussionTitle(project.name, discussionCount)
-      : requirement.substring(0, 30) + (requirement.length > 30 ? '...' : '');
+    // 创建新讨论 - 支持多模式
+    const discussion = StateManager.createDiscussion(
+      requirement,
+      selectedConfigs,
+      state.discussionModes // 传递所有选中的模式数组
+    );
 
-    state.currentDiscussion = {
-      id: generateId(),
-      title: discussionTitle,
-      modes: state.discussionModes,
-      currentModeIndex: 0,
-      models: state.selectedModels,
-      requirement: requirement,
-      messages: [],
-      createdAt: new Date().toISOString()
-    };
+    // 添加到讨论列表
+    await StateManager.addDiscussion(discussion);
 
-    switchView('discussion');
-    renderDiscussionMessages();
-    updateRoundIndicator();
+    // 清空输入框并折叠
+    if (elements.requirementInput) {
+      elements.requirementInput.value = '';
+    }
+    collapseInputArea();
+    updateStartButton();
 
-    // 开始第一个模式的讨论
-    await runCurrentMode(requirement);
+    // 渲染仪表盘
+    renderDashboard();
+
+    // 展开底部面板
+    expandBottomPanel();
+
+    // 启动后台讨论 - 传递所有模式
+    try {
+      await chrome.runtime.sendMessage({
+        type: 'START_DISCUSSION',
+        data: {
+          discussionId: discussion.id,
+          requirement,
+          modes: state.discussionModes, // 传递模式数组
+          currentModeIndex: 0, // 从第一个模式开始
+          models: selectedConfigs,
+          totalRounds: state.maxRounds
+        }
+      });
+
+      const modeNames = state.discussionModes.map(m => getModeName(m)).join(' → ');
+      showToast(`讨论已启动: ${modeNames}`, 'success');
+    } catch (error) {
+      showToast('启动讨论失败: ' + error.message, 'error');
+      StateManager.updateDiscussionProgress(discussion.id, { status: 'error', error: error.message });
+      renderDashboard();
+    }
   }
 
   // 执行当前模式的讨论

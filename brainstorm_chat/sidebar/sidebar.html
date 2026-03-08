@@ -11,114 +11,130 @@
   <div id="app">
     <!-- 主界面 -->
     <div id="main-view" class="view active">
+      <!-- 新 Header: 极简设计 -->
       <header class="header">
-        <h1>AI 讨论助手</h1>
-        <button id="theme-toggle" class="theme-toggle" title="切换主题">
-          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        <div class="header-project" id="header-project">
+          <span class="project-name" id="header-project-name">默认项目</span>
+          <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-          </svg>
-        </button>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" id="new-discussion-btn" title="新建讨论">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button class="icon-btn" id="config-btn" title="设置">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+        <!-- 项目下拉菜单 -->
+        <div class="header-dropdown" id="header-dropdown">
+          <div class="dropdown-list" id="header-dropdown-list">
+            <!-- 动态加载项目列表 -->
+          </div>
+          <div class="dropdown-actions">
+            <button class="btn btn-sm btn-secondary" id="new-project-btn">+ 新建项目</button>
+            <button class="btn btn-sm btn-danger" id="delete-project-btn" style="display: none;">删除项目</button>
+          </div>
+        </div>
       </header>
 
-      <!-- 项目切换器 -->
-        <div class="project-switcher">
-          <div class="project-current" id="project-current">
-            <span class="project-name" id="current-project-name">加载中...</span>
-            <span class="project-count" id="project-discussion-count">0次讨论</span>
-            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </div>
-          <div class="project-dropdown" id="project-dropdown">
-            <div class="project-list" id="project-list">
-              <!-- 动态加载项目列表 -->
-            </div>
-            <div class="project-actions">
-              <button class="btn btn-sm btn-secondary" id="new-project-btn">+ 新建项目</button>
-              <button class="btn btn-sm btn-danger" id="delete-project-btn" style="display: none;">删除项目</button>
-            </div>
-          </div>
+      <!-- 讨论列表 (统一设计) -->
+      <main class="discussion-list" id="discussion-list-container">
+        <!-- 进行中的讨论 -->
+        <div id="active-discussions-section">
+          <!-- 动态加载活跃讨论 -->
         </div>
 
-      <!-- 此项目的讨论列表 -->
-      <div class="discussion-section" id="discussion-section" style="display: none;">
-        <div class="discussion-section-header">
-          <span class="discussion-section-title">此项目的讨论</span>
-          <span class="discussion-section-count" id="discussion-list-count">0</span>
-        </div>
-        <div class="discussion-list" id="discussion-list">
-          <!-- 动态加载讨论列表 -->
-        </div>
-      </div>
-
-      <main class="main-content">
-        <!-- 需求输入 -->
-        <div class="form-group">
-          <label for="requirement-input">需求描述</label>
-          <textarea
-            id="requirement-input"
-            placeholder="请描述你的产品需求..."
-            rows="5"
-          ></textarea>
+        <!-- 分隔线 (已完成) -->
+        <div class="list-divider" id="completed-divider" style="display: none;">
+          <span>已完成</span>
         </div>
 
-        <!-- 讨论模式选择 -->
-        <div class="form-group">
-          <label>
-            讨论模式（可多选，按顺序执行）
-            <span id="mode-count" class="selection-badge" style="display: none;">0</span>
-          </label>
-          <div class="mode-selector">
-            <label class="radio-card">
-              <input type="checkbox" name="mode" value="round-table" checked>
-              <span class="radio-label">1. 圆桌会议</span>
-              <span class="radio-desc">按顺序轮流补充观点</span>
-            </label>
-            <label class="radio-card">
-              <input type="checkbox" name="mode" value="brainstorm">
-              <span class="radio-label">2. 头脑风暴</span>
-              <span class="radio-desc">同时生成，综合汇总</span>
-            </label>
-            <label class="radio-card">
-              <input type="checkbox" name="mode" value="debate">
-              <span class="radio-label">3. 辩论评审</span>
-              <span class="radio-desc">互相质疑，综合意见</span>
-            </label>
-          </div>
+        <!-- 已完成的讨论 -->
+        <div id="completed-discussions-section">
+          <!-- 动态加载已完成讨论 -->
         </div>
 
-        <!-- 参与模型选择 -->
-        <div class="form-group">
-          <label>
-            参与模型
-            <span id="model-count" class="selection-badge" style="display: none;">0</span>
-          </label>
-          <div id="model-list" class="model-list">
-            <!-- 动态加载 -->
-          </div>
+        <!-- 空状态 -->
+        <div class="empty-state" id="empty-state">
+          <div class="empty-text">没有讨论记录</div>
+          <div class="empty-hint">在下方输入需求开始新讨论</div>
         </div>
-
-        <!-- 开始讨论按钮 -->
-        <button id="start-btn" class="btn btn-primary btn-full" disabled>
-          开始讨论
-        </button>
       </main>
 
-      <footer class="footer">
-        <button id="config-btn" class="btn btn-secondary">⚙ 配置</button>
-        <button id="history-btn" class="btn btn-secondary">📜 历史</button>
+      <!-- 底部输入区 (可展开) -->
+      <footer class="input-area" id="input-area">
+        <div class="input-compact">
+          <textarea
+            class="input-field"
+            id="requirement-input"
+            placeholder="描述产品需求，开始新讨论..."
+            rows="1"
+          ></textarea>
+          <button class="send-btn" id="start-btn" disabled title="开始讨论">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 展开后显示 -->
+        <div class="input-expanded" id="input-expanded" style="display: none;">
+          <div class="expand-section">
+            <div class="expand-label">
+              讨论模式
+              <span class="mode-hint">可多选，按顺序执行</span>
+            </div>
+            <div class="mode-chips" id="mode-chips">
+              <label class="mode-chip active" data-mode="round-table" data-order="1">
+                <input type="checkbox" name="mode" value="round-table" checked>
+                <span class="mode-order">1</span>
+                <span class="mode-name">圆桌会议</span>
+                <span class="mode-desc">轮流补充观点</span>
+              </label>
+              <label class="mode-chip" data-mode="brainstorm" data-order="2">
+                <input type="checkbox" name="mode" value="brainstorm">
+                <span class="mode-order">2</span>
+                <span class="mode-name">头脑风暴</span>
+                <span class="mode-desc">同时生成汇总</span>
+              </label>
+              <label class="mode-chip" data-mode="debate" data-order="3">
+                <input type="checkbox" name="mode" value="debate">
+                <span class="mode-order">3</span>
+                <span class="mode-name">辩论评审</span>
+                <span class="mode-desc">互相质疑完善</span>
+              </label>
+            </div>
+            <div class="selected-modes-preview" id="selected-modes-preview">
+              <span class="preview-label">执行顺序:</span>
+              <span class="preview-modes" id="preview-modes">圆桌会议</span>
+            </div>
+          </div>
+          <div class="expand-section">
+            <div class="expand-label">参与模型</div>
+            <div class="model-chips" id="model-chips">
+              <!-- 动态加载模型选择 -->
+            </div>
+          </div>
+          <div class="expand-actions">
+            <button class="btn btn-primary btn-full" id="expanded-start-btn" disabled>开始讨论</button>
+          </div>
+        </div>
       </footer>
+
+      <!-- 底部控制面板 (新) -->
+      <bottom-panel id="bottom-control-panel"
+                    class="panel-collapsed"
+                    style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;">
+      </bottom-panel>
     </div>
 
     <!-- 讨论界面 -->
@@ -152,14 +168,52 @@
     <div id="config-view" class="view">
       <header class="header">
         <button id="config-back-btn" class="btn btn-icon">← 返回</button>
-        <h2>⚙ API 配置</h2>
+        <h2>⚙ 设置</h2>
       </header>
 
       <main class="main-content">
-        <button id="add-model-btn" class="btn btn-secondary btn-full">+ 添加模型</button>
+        <!-- 主题设置 -->
+        <div class="settings-section">
+          <div class="settings-label">外观</div>
+          <div class="theme-selector">
+            <button class="theme-option active" data-theme="light" id="theme-light">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+              <span>浅色</span>
+            </button>
+            <button class="theme-option" data-theme="dark" id="theme-dark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+              <span>深色</span>
+            </button>
+            <button class="theme-option" data-theme="auto" id="theme-auto">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <span>跟随系统</span>
+            </button>
+          </div>
+        </div>
 
-        <div id="config-list" class="config-list">
-          <!-- 动态加载配置 -->
+        <!-- API 配置 -->
+        <div class="settings-section">
+          <div class="settings-label">API 配置</div>
+          <button id="add-model-btn" class="btn btn-secondary btn-full">+ 添加模型</button>
+          <div id="config-list" class="config-list">
+            <!-- 动态加载配置 -->
+          </div>
         </div>
       </main>
     </div>
