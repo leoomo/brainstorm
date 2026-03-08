@@ -397,7 +397,15 @@ async function callErnie(model, systemPrompt, userPrompt) {
 
 // GLM API 调用
 async function callGLM(model, systemPrompt, userPrompt) {
-  const endpoint = model.endpoint || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+  // 修正错误的 endpoint
+  let endpoint = model.endpoint || '';
+  const correctEndpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+  if (!endpoint || !endpoint.includes('bigmodel')) {
+    endpoint = correctEndpoint;
+    console.log('GLM: 使用修正后的端点', endpoint);
+  } else {
+    console.log('GLM: 使用配置中的端点', endpoint);
+  }
   const modelName = model.model || 'glm-5';
 
   const response = await fetch(endpoint, {

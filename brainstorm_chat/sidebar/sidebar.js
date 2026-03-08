@@ -246,6 +246,9 @@
           } else if (config.provider === 'qwen') {
             config.endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
             needsSave = true;
+          } else if (config.provider === 'glm') {
+            config.endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+            needsSave = true;
           }
         });
 
