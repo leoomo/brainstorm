@@ -788,11 +788,17 @@
   }
 
   function restorePanelState() {
-    const panelState = StateManager.state.panelState;
     const panel = document.querySelector('bottom-panel');
-    if (panel) {
-      panel.setState(panelState);
-    }
+    if (!panel) return;
+
+    // 获取活跃讨论
+    const activeDiscussions = StateManager.getActiveDiscussions();
+    const hasActiveDiscussion = activeDiscussions.length > 0 && StateManager.state.activeDiscussionId;
+
+    // 只在有活跃讨论时恢复保存的状态，否则默认收缩
+    const panelState = hasActiveDiscussion ? (StateManager.state.panelState || 'collapsed') : 'collapsed';
+
+    panel.setState(panelState);
   }
 
   // ========== 实时更新监听 ==========

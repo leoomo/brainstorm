@@ -359,11 +359,15 @@ class BottomPanel extends HTMLElement {
   constructor() {
     super();
     this.state = 'collapsed';
+    // 立即设置初始状态，确保在 render 之前
+    this.setAttribute('data-state', 'collapsed');
   }
 
   connectedCallback() {
     // 确保初始状态正确设置
-    this.setAttribute('data-state', this.state);
+    if (!this.hasAttribute('data-state')) {
+      this.setAttribute('data-state', 'collapsed');
+    }
     this.render();
   }
 

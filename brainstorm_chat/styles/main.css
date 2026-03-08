@@ -1813,11 +1813,7 @@ discussion-card {
 
 /* ========== 底部控制面板样式 ========== */
 
-bottom-panel {
-  display: block;
-}
-
-/* 外部 bottom-panel 元素样式 */
+/* 外部 bottom-panel 自定义元素样式 - 默认收缩状态 */
 bottom-panel {
   display: block;
   position: fixed;
@@ -1827,29 +1823,54 @@ bottom-panel {
   background: var(--card-bg);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, height 0.3s ease;
   z-index: 100;
+  transition: max-height 0.3s ease;
+  overflow: hidden;
+  /* 默认收缩状态 */
+  max-height: 60px;
 }
 
+/* 默认隐藏内容 (未设置 data-state 时也生效) */
+bottom-panel .panel-content {
+  display: none;
+}
+
+/* 收缩状态 - 明确设置 */
 bottom-panel[data-state="collapsed"] {
-  transform: translateY(calc(100% - 48px));
-  height: auto;
+  max-height: 60px;
 }
 
+/* 收缩时隐藏内容 */
+bottom-panel[data-state="collapsed"] .panel-content {
+  display: none !important;
+}
+
+/* 收缩时隐藏拖拽手柄 */
+bottom-panel[data-state="collapsed"] .panel-drag-handle {
+  display: none;
+}
+
+/* 展开状态 */
 bottom-panel[data-state="expanded"] {
-  transform: translateY(0);
-  height: 280px;
+  max-height: 280px;
 }
 
+/* 展开时显示内容 */
+bottom-panel[data-state="expanded"] .panel-content {
+  display: block;
+}
+
+/* 全屏状态 */
 bottom-panel[data-state="fullscreen"] {
-  transform: translateY(0);
+  max-height: 100vh;
   height: 100vh;
-  position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   z-index: 1000;
+}
+
+/* 全屏时显示内容 */
+bottom-panel[data-state="fullscreen"] .panel-content {
+  display: block;
 }
 
 /* 内部 .bottom-panel div 样式 */
