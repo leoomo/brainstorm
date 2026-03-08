@@ -449,20 +449,48 @@
     // 更新界面显示当前模式
     elements.roundIndicator.innerHTML = `<span class="mode-tag">${modeName}</span> Round ${state.currentRound}/${state.maxRounds}`;
 
-    try {
-      await chrome.runtime.sendMessage({
-        type: 'START_DISCUSSION',
-        data: {
-          requirement,
-          mode: currentMode,
-          models: state.selectedModels.map(id =>
-            state.apiConfigs.find(c => c.id === id)
-          ),
-          round: state.currentRound
+    // 重试机制：尝试发送消息到 background
+    const sendWithRetry = async (retries = 2) => {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const response = await chrome.runtime.sendMessage({
+            type: 'START_DISCUSSION',
+            data: {
+              requirement,
+              mode: currentMode,
+              models: state.selectedModels.map(id =>
+                state.apiConfigs.find(c => c.id === id)
+              ),
+              round: state.currentRound
+            }
+          });
+
+          // 检查运行时错误
+          if (chrome.runtime.lastError) {
+            console.warn('消息发送失败，尝试重试...', chrome.runtime.lastError.message);
+            if (i < retries) {
+              await new Promise(r => setTimeout(r, 500));
+              continue;
+            }
+            throw new Error(chrome.runtime.lastError.message);
+          }
+
+          return response;
+        } catch (error) {
+          console.error('发送消息错误:', error);
+          if (i < retries) {
+            await new Promise(r => setTimeout(r, 500));
+          } else {
+            throw error;
+          }
         }
-      });
+      }
+    };
+
+    try {
+      await sendWithRetry();
     } catch (error) {
-      showToast('讨论出错: ' + error.message, 'error');
+      showToast('连接失败，请刷新页面重试', 'error');
       state.isDiscussing = false;
     }
   }

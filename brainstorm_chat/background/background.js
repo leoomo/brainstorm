@@ -508,19 +508,15 @@ function extractSection(content, keywords) {
 
 // 消息处理
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // 尝试获取发送消息的标签页的端口
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      messagePort = chrome.tabs.connect(tabs[0].id);
-    }
-  });
-
+  // 处理异步消息
   handleMessage(message)
     .then(sendResponse)
     .catch(error => {
+      console.error('处理消息错误:', error);
       sendResponse({ type: 'ERROR', message: error.message });
     });
 
+  // 返回 true 表示异步响应
   return true;
 });
 
