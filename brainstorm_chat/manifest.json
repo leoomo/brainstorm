@@ -3,9 +3,11 @@
   "name": "AI 讨论助手",
   "version": "1.0.0",
   "description": "基于多AI模型轮流讨论的产品文档生成工具",
+  "minimum_chrome_version": "114",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://api.openai.com/*",
@@ -16,8 +18,10 @@
     "https://open.bigmodel.cn/*",
     "https://api.moonshot.cn/*"
   ],
+  "side_panel": {
+    "default_path": "sidebar/sidebar.html"
+  },
   "action": {
-    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

@@ -4,6 +4,11 @@
 // 消息端口管理
 let messagePort = null;
 
+// 侧边栏设置
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+});
+
 // 讨论引擎
 const DiscussionEngine = {
   // 圆桌会议模式

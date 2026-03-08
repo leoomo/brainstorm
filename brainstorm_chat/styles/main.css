@@ -66,8 +66,10 @@
 }
 
 body {
-  width: 400px;
-  min-height: 520px;
+  width: 100%;
+  min-width: 320px;
+  max-width: 600px;
+  min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   font-size: 14px;
   color: var(--text-primary);
@@ -79,7 +81,7 @@ body {
 #app {
   display: flex;
   flex-direction: column;
-  min-height: 520px;
+  min-height: 100vh;
 }
 
 /* 视图管理 */
