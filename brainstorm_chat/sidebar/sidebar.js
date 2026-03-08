@@ -93,9 +93,7 @@
   // 设置消息监听
   function setupMessageListener() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.type === 'STREAM_MESSAGE') {
-        appendMessage(message.data);
-      } else if (message.type === 'ROUND_COMPLETE') {
+      if (message.type === 'ROUND_COMPLETE') {
         onRoundComplete();
       } else if (message.type === 'ERROR') {
         // 用户友好的错误消息
@@ -511,7 +509,27 @@
     };
 
     try {
-      await sendWithRetry();
+      const response = await sendWithRetry();
+
+      // 处理返回的消息
+      if (response && response.data && response.data.results) {
+        response.data.results.forEach(result => {
+          state.messages.push({
+            model: result.model,
+            content: result.content,
+            isThinking: false
+          });
+        });
+        renderDiscussionMessages();
+
+        // 保存到当前讨论
+        if (state.currentDiscussion) {
+          state.currentDiscussion.messages = [...state.messages];
+        }
+      }
+
+      // 标记当前轮完成
+      onRoundComplete();
     } catch (error) {
       showToast('连接失败，请刷新页面重试', 'error');
       state.isDiscussing = false;

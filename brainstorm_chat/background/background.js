@@ -29,16 +29,13 @@ const DiscussionEngine = {
 
     for (const model of models) {
       try {
-        sendStreamMessage(model.name, '', true); // 开始流式输出
         const response = await callModelAPI(model, systemPrompt, userPrompt);
-        sendStreamMessage(model.name, response, false); // 结束流式输出
         results.push({
           model: model.name,
           content: response
         });
       } catch (error) {
         console.error(`模型 ${model.name} 调用失败:`, error);
-        sendStreamMessage(model.name, `[错误] ${error.message}`, false);
         results.push({
           model: model.name,
           content: `[错误] ${error.message}`,
@@ -66,16 +63,13 @@ const DiscussionEngine = {
     // 并发调用所有模型
     const promises = models.map(async (model) => {
       try {
-        sendStreamMessage(model.name, '', true);
         const response = await callModelAPI(model, systemPrompt, userPrompt);
-        sendStreamMessage(model.name, response, false);
         return {
           model: model.name,
           content: response
         };
       } catch (error) {
         console.error(`模型 ${model.name} 调用失败:`, error);
-        sendStreamMessage(model.name, `[错误] ${error.message}`, false);
         return {
           model: model.name,
           content: `[错误] ${error.message}`,
@@ -112,16 +106,13 @@ ${previousMessages.map(m => `- ${m.model}: ${m.content.substring(0, 300)}...`).j
 
     for (const model of models) {
       try {
-        sendStreamMessage(model.name, '', true);
         const response = await callModelAPI(model, systemPrompt, userPrompt);
-        sendStreamMessage(model.name, response, false);
         results.push({
           model: model.name,
           content: response
         });
       } catch (error) {
         console.error(`模型 ${model.name} 调用失败:`, error);
-        sendStreamMessage(model.name, `[错误] ${error.message}`, false);
         results.push({
           model: model.name,
           content: `[错误] ${error.message}`,
@@ -135,20 +126,6 @@ ${previousMessages.map(m => `- ${m.model}: ${m.content.substring(0, 300)}...`).j
 };
 
 // 发送流式消息到 popup
-function sendStreamMessage(model, content, isThinking) {
-  // 发送消息到侧边栏
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, {
-        type: 'STREAM_MESSAGE',
-        data: { model, content, isThinking }
-      }).catch(err => {
-        console.warn('发送消息失败:', err.message);
-      });
-    }
-  });
-}
-
 // 调用模型 API
 async function callModelAPI(model, systemPrompt, userPrompt) {
   if (!model.apiKey) {
