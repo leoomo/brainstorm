@@ -749,7 +749,7 @@
         name: name || '未命名',
         provider: provider,
         model: modelInput || DEFAULT_MODELS.find(m => m.provider === provider)?.model || '',
-        endpoint: document.getElementById('config-endpoint').value.trim() || DEFAULT_ENDPOINTS[provider] || '',
+        endpoint: getCorrectEndpoint(provider, document.getElementById('config-endpoint').value.trim()),
         apiKey: apiKey,
         validated: false,
         validationError: validationError
@@ -781,7 +781,7 @@
         name: name,
         provider: provider,
         model: modelInput || DEFAULT_MODELS.find(m => m.provider === provider)?.model || '',
-        endpoint: document.getElementById('config-endpoint').value.trim() || DEFAULT_ENDPOINTS[provider] || '',
+        endpoint: getCorrectEndpoint(provider, document.getElementById('config-endpoint').value.trim()),
         apiKey: apiKey,
         validated: false,
         validationError: '未填写 API Key'
@@ -942,6 +942,24 @@
     'ernie': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1',
     'spark': 'https://spark-api-open.xf-yun.com/v1/chat/completions'
   };
+
+  // 获取修正后的 endpoint（兼容处理错误的 endpoint）
+  function getCorrectEndpoint(provider, userEndpoint) {
+    const defaultEndpoint = DEFAULT_ENDPOINTS[provider] || '';
+
+    // DeepSeek 特殊处理
+    if (provider === 'deepseek') {
+      // 如果用户没填 endpoint，或填写了错误的，使用正确的
+      const correctEndpoint = 'https://api.deepseek.com/chat/completions';
+      if (!userEndpoint || userEndpoint.includes('/v1') || userEndpoint === 'https://api.deepseek.com') {
+        return correctEndpoint;
+      }
+      return userEndpoint;
+    }
+
+    // 其他 provider 使用默认
+    return userEndpoint || defaultEndpoint;
+  }
 
   // 内置默认模型
   const DEFAULT_MODELS = [
