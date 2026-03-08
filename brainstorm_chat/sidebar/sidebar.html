@@ -142,12 +142,12 @@
 
           <div class="form-group">
             <label for="config-name">模型名称</label>
-            <input type="text" id="config-name" placeholder="如：GPT-4" required>
+            <input type="text" id="config-name" placeholder="如：GPT-4">
           </div>
 
           <div class="form-group">
             <label for="config-provider">API 提供商</label>
-            <select id="config-provider" required>
+            <select id="config-provider">
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic (Claude)</option>
               <option value="deepseek">DeepSeek</option>
@@ -171,14 +171,14 @@
 
           <div class="form-group">
             <label for="config-key">API Key</label>
-            <input type="password" id="config-key" placeholder="请输入 API Key" required>
+            <input type="password" id="config-key" placeholder="请输入 API Key">
           </div>
 
           <div class="form-group">
-            <label>
-              <input type="checkbox" id="config-enabled" checked>
-              启用此模型
-            </label>
+            <div id="validation-status" class="validation-status" style="display: none;">
+              <span class="validation-icon"></span>
+              <span class="validation-text"></span>
+            </div>
           </div>
 
           <div class="modal-actions">

@@ -92,6 +92,23 @@ const StateManager = {
     return new Promise((resolve) => {
       chrome.storage.local.set({ history: this.state.history }, resolve);
     });
+  },
+
+  // 加载选中的模型
+  async loadSelectedModels() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['selectedModels'], (result) => {
+        this.state.selectedModels = result.selectedModels || [];
+        resolve(this.state.selectedModels);
+      });
+    });
+  },
+
+  // 保存选中的模型
+  async saveSelectedModels() {
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ selectedModels: this.state.selectedModels }, resolve);
+    });
   }
 };
 

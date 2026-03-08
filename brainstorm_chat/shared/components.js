@@ -1,32 +1,36 @@
 // AI 讨论助手 - 通用组件模块
 
 const Components = {
-  // 创建模型项 HTML
-  createModelItem(config, isSelected = false) {
-    const label = document.createElement('label');
-    label.className = `model-item${isSelected ? ' selected' : ''}`;
-    label.dataset.id = config.id;
+  // 创建模型芯片 HTML
+  createModelChip(config, isSelected = false) {
+    const chip = document.createElement('div');
+    chip.className = `model-chip${isSelected ? ' selected' : ''}`;
+    chip.dataset.id = config.id;
 
-    label.innerHTML = `
-      <input type="checkbox" value="${config.id}"${isSelected ? ' checked' : ''}>
-      <span class="model-name">${Utils.escapeHtml(config.name)}</span>
-      <span class="model-provider">${Utils.getProviderName(config.provider)}</span>
+    chip.innerHTML = `
+      <span class="model-chip-check">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </span>
+      <span class="model-chip-name">${Utils.escapeHtml(config.name)}</span>
+      <span class="model-chip-provider provider-${config.provider}">${config.provider.toUpperCase()}</span>
     `;
 
-    return label;
+    return chip;
   },
 
   // 创建配置项 HTML
   createConfigItem(config) {
     const item = document.createElement('div');
-    item.className = `config-item${config.enabled ? '' : ' disabled'}`;
+    item.className = `config-item${config.validated ? '' : ' disabled'}`;
     item.dataset.id = config.id;
 
     item.innerHTML = `
       <div class="config-info">
         <div class="config-name">
           ${Utils.escapeHtml(config.name)}
-          <span class="config-badge ${config.enabled ? 'enabled' : 'disabled'}">${config.enabled ? '已启用' : '已禁用'}</span>
+          <span class="config-badge ${config.validated ? 'enabled' : 'disabled'}">${config.validated ? '可用' : '不可用'}</span>
         </div>
         <div class="config-provider">${Utils.getProviderName(config.provider)}</div>
       </div>
@@ -133,29 +137,12 @@ const Components = {
     return empty;
   },
 
-  // 绑定模型项事件
-  bindModelItemEvents(item, onChange) {
-    const checkbox = item.querySelector('input');
-
-    item.addEventListener('click', (e) => {
-      if (e.target.type !== 'checkbox') {
-        checkbox.checked = !checkbox.checked;
-      }
-      if (checkbox.checked) {
-        item.classList.add('selected');
-      } else {
-        item.classList.remove('selected');
-      }
-      onChange();
-    });
-
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
-        item.classList.add('selected');
-      } else {
-        item.classList.remove('selected');
-      }
-      onChange();
+  // 绑定模型芯片事件
+  bindModelChipEvents(chip, config, onToggle) {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('selected');
+      const isSelected = chip.classList.contains('selected');
+      onToggle(config.id, isSelected);
     });
   }
 };

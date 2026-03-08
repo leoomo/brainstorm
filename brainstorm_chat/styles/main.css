@@ -345,95 +345,152 @@ body {
   opacity: 1;
 }
 
-/* 模型列表 */
+/* 模型列表 - 新设计 */
 .model-list {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.model-item {
-  display: flex;
+.model-chip {
+  display: inline-flex;
   align-items: center;
-  padding: 12px 14px;
+  gap: 6px;
+  padding: 8px 14px;
   background-color: var(--card-bg);
   border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: 20px;
   cursor: pointer;
   transition: var(--transition);
+  font-size: 13px;
+  user-select: none;
 }
 
-.model-item:hover {
+.model-chip:hover {
   border-color: var(--text-tertiary);
-  box-shadow: var(--shadow-sm);
 }
 
-.model-item.selected {
+.model-chip.selected {
   border-color: var(--primary-color);
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.06) 0%, rgba(14, 165, 233, 0.12) 100%);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0.15) 100%);
 }
 
-.model-item input[type="checkbox"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--border-color);
-  border-radius: 4px;
-  margin-right: 12px;
-  position: relative;
-  flex-shrink: 0;
-  transition: var(--transition);
-  cursor: pointer;
+.model-chip.selected .model-chip-check {
+  opacity: 1;
+  transform: scale(1);
 }
 
-.model-item input[type="checkbox"]::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 5px;
-  width: 5px;
-  height: 9px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
-  transition: var(--transition);
+/* 禁用状态 */
+.model-chip.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--hover-bg);
 }
 
-.model-item input[type="checkbox"]:checked {
+.model-chip.disabled:hover {
+  border-color: var(--border-color);
+  transform: none;
+}
+
+.model-chip.disabled .model-chip-provider {
+  background: var(--border-color);
+  color: var(--text-tertiary);
+}
+
+.model-chip-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   background: var(--primary-color);
-  border-color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: var(--transition);
+  flex-shrink: 0;
 }
 
-.model-item input[type="checkbox"]:checked::after {
-  transform: rotate(45deg) scale(1);
+.model-chip-check svg {
+  width: 10px;
+  height: 10px;
+  stroke: white;
+  stroke-width: 3;
 }
 
-.model-name {
+.model-chip-name {
   font-weight: 500;
-  font-size: 14px;
   color: var(--text-primary);
 }
 
-.model-provider {
-  font-size: 11px;
-  color: var(--text-secondary);
-  background: var(--hover-bg);
-  padding: 2px 8px;
-  border-radius: 10px;
-  margin-left: auto;
-}
-
-.model-item.disabled {
-  opacity: 0.5;
-}
-
-.model-disabled-tip {
+.model-chip-provider {
   font-size: 10px;
-  color: var(--danger-color);
-  background: rgba(239, 68, 68, 0.1);
   padding: 2px 6px;
   border-radius: 8px;
-  margin-left: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* 供应商颜色 */
+.provider-openai { background: rgba(16, 185, 129, 0.15); color: #059669; }
+.provider-anthropic { background: rgba(180, 83, 9, 0.15); color: #B45309; }
+.provider-deepseek { background: rgba(59, 130, 246, 0.15); color: #2563EB; }
+.provider-qwen { background: rgba(249, 115, 22, 0.15); color: #EA580C; }
+.provider-ernie { background: rgba(239, 68, 68, 0.15); color: #DC2626; }
+.provider-glm { background: rgba(139, 92, 246, 0.15); color: #7C3AED; }
+.provider-moonshot { background: rgba(236, 72, 153, 0.15); color: #DB2777; }
+.provider-custom { background: var(--hover-bg); color: var(--text-secondary); }
+
+/* 空状态 - 模型选择 */
+.models-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.models-empty-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  background: var(--hover-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.models-empty-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--text-tertiary);
+}
+
+.models-empty-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.models-empty-action {
+  font-size: 13px;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.models-empty-action:hover {
+  text-decoration: underline;
+}
+
+/* 选中计数提示 */
+.model-selection-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+  font-weight: 400;
 }
 
 /* 按钮 */
@@ -696,6 +753,12 @@ body {
 .config-provider {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.config-error {
+  font-size: 11px;
+  color: var(--danger-color);
+  margin-top: 4px;
 }
 
 .config-actions {
@@ -1163,4 +1226,65 @@ body {
   font-weight: 600;
   border-radius: 10px;
   margin-left: 8px;
+}
+
+/* 校验状态 */
+.validation-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.validation-status.validating {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
+
+.validation-status.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.validation-status.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+.validation-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.validation-status.validating .validation-icon {
+  animation: spin 1s linear infinite;
+}
+
+.validation-status.validating .validation-icon::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--warning-color);
+  border-top-color: transparent;
+  border-radius: 50%;
+}
+
+.validation-status.success .validation-icon::before {
+  content: '';
+  width: 12px;
+  height: 8px;
+  border: 2px solid var(--success-color);
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg);
+}
+
+.validation-status.error .validation-icon::before {
+  content: '\00d7';
+  font-size: 18px;
+  font-weight: bold;
 }

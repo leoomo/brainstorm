@@ -173,6 +173,47 @@ async function callModelAPI(model, systemPrompt, userPrompt) {
   }
 }
 
+// 校验 API Key
+async function validateApiKey(provider, apiKey, modelName) {
+  const model = { provider, apiKey, model: modelName, endpoint: '' };
+
+  try {
+    // 使用简单的测试提示
+    const testPrompt = 'Hi';
+
+    switch (provider) {
+      case 'openai':
+        await callOpenAI(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+      case 'anthropic':
+        await callAnthropic(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+      case 'deepseek':
+        await callDeepSeek(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+      case 'qwen':
+        await callQwen(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+      case 'ernie':
+        await callErnie(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+      case 'glm':
+        await callGLM(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+      case 'moonshot':
+        await callMoonshot(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+      default:
+        // 自定义 provider 也尝试调用
+        await callOpenAI(model, 'You are a helpful assistant.', testPrompt);
+        return true;
+    }
+  } catch (error) {
+    console.error('API 校验失败:', error);
+    return false;
+  }
+}
+
 // OpenAI API 调用
 async function callOpenAI(model, systemPrompt, userPrompt) {
   const endpoint = model.endpoint || 'https://api.openai.com/v1/chat/completions';
@@ -519,6 +560,12 @@ async function handleMessage(message) {
       const { messages, requirement } = data;
       const document = DocumentGenerator.generate(messages, requirement);
       return { type: 'DOCUMENT_GENERATED', data: { document } };
+    }
+
+    case 'VALIDATE_API': {
+      const { provider, apiKey, model } = data;
+      const isValid = await validateApiKey(provider, apiKey, model);
+      return { success: isValid };
     }
 
     default:

@@ -60,6 +60,7 @@
     initTheme();
     await loadApiConfigs();
     await loadHistory();
+    await StateManager.loadSelectedModels(); // 加载保存的模型选择
     bindEvents();
     setupMessageListener();
     renderModelList();
@@ -223,6 +224,23 @@
     return new Promise((resolve) => {
       chrome.storage.local.get(['apiConfigs'], (result) => {
         state.apiConfigs = result.apiConfigs || [];
+
+        // 迁移逻辑：将 enabled 转换为 validated
+        let needsSave = false;
+        state.apiConfigs.forEach(config => {
+          if ('enabled' in config && !('validated' in config)) {
+            // 旧配置：enabled 转为 validated
+            config.validated = config.enabled;
+            delete config.enabled;
+            needsSave = true;
+          }
+          // 确保有 validated 字段
+          if (!('validated' in config)) {
+            config.validated = false;
+            needsSave = true;
+          }
+        });
+
         // 如果没有配置，默认添加主流模型
         if (state.apiConfigs.length === 0) {
           state.apiConfigs = DEFAULT_MODELS.map(m => ({
@@ -232,14 +250,13 @@
             model: m.model,
             endpoint: DEFAULT_ENDPOINTS[m.provider] || '',
             apiKey: '',
-            enabled: false
+            validated: false
           }));
-          // 默认启用第一个
-          if (state.apiConfigs.length > 0) {
-            state.apiConfigs[0].enabled = true;
-          }
+          saveApiConfigs();
+        } else if (needsSave) {
           saveApiConfigs();
         }
+
         resolve();
       });
     });
@@ -251,64 +268,99 @@
   // 加载历史
   const loadHistory = StateManager.loadHistory.bind(StateManager);
 
-  // 渲染模型列表
+  // 渲染模型列表 - 芯片式设计
   function renderModelList() {
-    // 显示所有模型，选择即启用
-    elements.modelList.innerHTML = state.apiConfigs.map(config => `
-      <label class="model-item ${config.enabled ? 'selected' : ''}" data-id="${config.id}">
-        <input type="checkbox" value="${config.id}" ${config.enabled ? 'checked' : ''}>
-        <span class="model-name">${escapeHtml(config.name)}</span>
-        <span class="model-provider">${getProviderName(config.provider)}</span>
-      </label>
-    `).join('');
+    // 空状态：没有配置任何模型
+    if (state.apiConfigs.length === 0) {
+      elements.modelList.innerHTML = `
+        <div class="models-empty">
+          <div class="models-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+            </svg>
+          </div>
+          <p class="models-empty-text">尚未配置任何模型</p>
+          <span class="models-empty-action" id="add-model-from-list">点击添加模型</span>
+        </div>
+      `;
 
-    // 绑定选择事件 - 选择即启用
-    elements.modelList.querySelectorAll('.model-item').forEach(item => {
-      const checkbox = item.querySelector('input');
-
-      item.addEventListener('click', (e) => {
-        if (e.target.type !== 'checkbox') {
-          checkbox.checked = !checkbox.checked;
-        }
-        // 更新选中状态和启用状态
-        if (checkbox.checked) {
-          item.classList.add('selected');
-        } else {
-          item.classList.remove('selected');
-        }
-        // 选择即启用，取消选择即禁用
-        const config = state.apiConfigs.find(c => c.id === checkbox.value);
-        if (config) {
-          config.enabled = checkbox.checked;
-          saveApiConfigs();
-        }
-        updateSelectedModels();
+      // 绑定添加模型事件
+      document.getElementById('add-model-from-list')?.addEventListener('click', () => {
+        showConfigModal();
       });
 
-      checkbox.addEventListener('change', () => {
-        if (checkbox.checked) {
-          item.classList.add('selected');
-        } else {
-          item.classList.remove('selected');
-        }
-        // 选择即启用，取消选择即禁用
-        const config = state.apiConfigs.find(c => c.id === checkbox.value);
-        if (config) {
-          config.enabled = checkbox.checked;
-          saveApiConfigs();
-        }
+      // 更新按钮状态
+      state.selectedModels = [];
+      updateStartButton();
+      return;
+    }
+
+    // 获取保存的选择，如果没有保存则使用已启用的模型
+    const savedSelection = state.selectedModels || [];
+    const enabledModels = state.apiConfigs.filter(c => c.validated);
+    const disabledModels = state.apiConfigs.filter(c => !c.validated);
+
+    // 决定哪些模型应该被选中：优先使用保存的选择，否则使用已校验的
+    const getInitialSelection = (configId) => {
+      if (savedSelection.includes(configId)) return true;
+      // 如果没有保存的选择，且模型已启用，则默认选中
+      if (savedSelection.length === 0 && enabledModels.find(m => m.id === configId)) return true;
+      return false;
+    };
+
+    // 已启用的模型 - 可选择
+    const enabledChips = enabledModels.map(config => {
+      const isSelected = getInitialSelection(config.id);
+      return `
+        <div class="model-chip ${isSelected ? 'selected' : ''}" data-id="${config.id}">
+          <span class="model-chip-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </span>
+          <span class="model-chip-name">${escapeHtml(config.name)}</span>
+          <span class="model-chip-provider provider-${config.provider}">${config.provider.toUpperCase()}</span>
+        </div>
+      `;
+    }).join('');
+
+    // 未启用的模型（禁用状态）
+    const disabledChips = disabledModels.map(config => `
+      <div class="model-chip disabled" data-id="${config.id}" title="该模型未启用，请在配置中启用">
+        <span class="model-chip-name">${escapeHtml(config.name)}</span>
+        <span class="model-chip-provider provider-${config.provider}">${config.provider.toUpperCase()}</span>
+      </div>
+    `).join('');
+
+    elements.modelList.innerHTML = enabledChips + disabledChips;
+
+    // 添加提示文字
+    const hint = document.createElement('p');
+    hint.className = 'model-selection-hint';
+    hint.textContent = '点击可用模型可取消选择';
+    elements.modelList.appendChild(hint);
+
+    // 绑定点击事件 - 已启用的模型可点击切换
+    elements.modelList.querySelectorAll('.model-chip:not(.disabled)').forEach(chip => {
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('selected');
         updateSelectedModels();
+        // 保存选择到存储（包括清空选择的情况）
+        StateManager.saveSelectedModels();
       });
     });
 
-    // 已启用的模型已在 HTML 中默认选中，同步状态
+    // 同步状态
     updateSelectedModels();
   }
 
   // 更新已选模型
   function updateSelectedModels() {
-    state.selectedModels = Array.from(elements.modelList.querySelectorAll('input:checked'))
-      .map(input => input.value);
+    // 从 UI 选中状态获取（不是从 config.enabled，这样用户可以临时取消选择）
+    state.selectedModels = Array.from(elements.modelList.querySelectorAll('.model-chip.selected'))
+      .map(chip => chip.dataset.id);
 
     // 更新选中计数徽章
     if (elements.modelCount) {
@@ -594,13 +646,14 @@
     }
 
     elements.configList.innerHTML = state.apiConfigs.map(config => `
-      <div class="config-item ${config.enabled ? '' : 'disabled'}" data-id="${config.id}">
+      <div class="config-item ${config.validated ? '' : 'disabled'}" data-id="${config.id}">
         <div class="config-info">
           <div class="config-name">
             ${escapeHtml(config.name)}
-            <span class="config-badge ${config.enabled ? 'enabled' : 'disabled'}">${config.enabled ? '已启用' : '已禁用'}</span>
+            <span class="config-badge ${config.validated ? 'enabled' : 'disabled'}">${config.validated ? '可用' : '不可用'}</span>
           </div>
           <div class="config-provider">${getProviderName(config.provider)}</div>
+          ${config.validationError ? `<div class="config-error">${escapeHtml(config.validationError)}</div>` : ''}
         </div>
         <div class="config-actions">
           <button class="btn btn-secondary edit-config-btn">编辑</button>
@@ -639,13 +692,24 @@
     elements.configForm.reset();
     document.getElementById('config-id').value = config ? config.id : '';
 
+    // 重置校验状态
+    const validationStatus = document.getElementById('validation-status');
+    validationStatus.style.display = 'none';
+    validationStatus.className = 'validation-status';
+
     if (config) {
       document.getElementById('config-name').value = config.name;
       document.getElementById('config-provider').value = config.provider;
       document.getElementById('config-model').value = config.model || '';
       document.getElementById('config-endpoint').value = config.endpoint || '';
       document.getElementById('config-key').value = config.apiKey;
-      document.getElementById('config-enabled').checked = config.enabled;
+
+      // 显示当前校验状态
+      if (config.validated) {
+        validationStatus.style.display = 'flex';
+        validationStatus.className = 'validation-status success';
+        validationStatus.querySelector('.validation-text').textContent = 'API 已验证可用';
+      }
     }
 
     elements.configModal.classList.add('active');
@@ -660,26 +724,112 @@
   async function saveConfig(e) {
     e.preventDefault();
 
-    const isEnabled = document.getElementById('config-enabled').checked;
     const name = document.getElementById('config-name').value.trim();
     const apiKey = document.getElementById('config-key').value.trim();
-
-    // 验证 - 仅当启用时必填
-    if (isEnabled) {
-      if (!name) {
-        showToast('请输入模型名称', 'warning');
-        return;
-      }
-      if (!apiKey) {
-        showToast('请输入 API Key', 'warning');
-        return;
-      }
-    }
-
     const id = document.getElementById('config-id').value || generateId();
     const provider = document.getElementById('config-provider').value;
     const modelInput = document.getElementById('config-model').value.trim();
 
+    const validationStatus = document.getElementById('validation-status');
+    validationStatus.style.display = 'flex';
+
+    // 先检查必填字段（只有模型名称是必填的）
+    let validationError = '';
+    if (!name) {
+      validationError = '请填写模型名称';
+    }
+
+    // 如果必填字段缺失，标记失败并显示原因，但仍然保存
+    if (validationError) {
+      validationStatus.className = 'validation-status error';
+      validationStatus.querySelector('.validation-text').textContent = validationError;
+
+      const config = {
+        id: id,
+        name: name || '未命名',
+        provider: provider,
+        model: modelInput || DEFAULT_MODELS.find(m => m.provider === provider)?.model || '',
+        endpoint: document.getElementById('config-endpoint').value.trim() || DEFAULT_ENDPOINTS[provider] || '',
+        apiKey: apiKey,
+        validated: false,
+        validationError: validationError
+      };
+
+      const existingIndex = state.apiConfigs.findIndex(c => c.id === id);
+      if (existingIndex >= 0) {
+        state.apiConfigs[existingIndex] = config;
+      } else {
+        state.apiConfigs.push(config);
+      }
+
+      await saveApiConfigs();
+      closeConfigModal();
+      renderConfigList();
+      renderModelList();
+      updateStartButton();
+      showToast('保存成功，但 ' + validationError, 'warning');
+      return;
+    }
+
+    // 如果没有填写 API Key，直接保存为未校验
+    if (!apiKey) {
+      validationStatus.className = 'validation-status error';
+      validationStatus.querySelector('.validation-text').textContent = '未填写 API Key，已保存';
+
+      const config = {
+        id: id,
+        name: name,
+        provider: provider,
+        model: modelInput || DEFAULT_MODELS.find(m => m.provider === provider)?.model || '',
+        endpoint: document.getElementById('config-endpoint').value.trim() || DEFAULT_ENDPOINTS[provider] || '',
+        apiKey: apiKey,
+        validated: false,
+        validationError: '未填写 API Key'
+      };
+
+      const existingIndex = state.apiConfigs.findIndex(c => c.id === id);
+      if (existingIndex >= 0) {
+        state.apiConfigs[existingIndex] = config;
+      } else {
+        state.apiConfigs.push(config);
+      }
+
+      await saveApiConfigs();
+      closeConfigModal();
+      renderConfigList();
+      renderModelList();
+      updateStartButton();
+      showToast('保存成功，请填写 API Key 后再保存以进行校验', 'warning');
+      return;
+    }
+
+    // API Key 已填写，进行校验
+    validationStatus.className = 'validation-status validating';
+    validationStatus.querySelector('.validation-text').textContent = '正在校验 API...';
+
+    // 禁用提交按钮
+    const submitBtn = elements.configForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '校验中...';
+
+    // 校验 API
+    const isValid = await validateApiKey(provider, apiKey, modelInput || DEFAULT_MODELS.find(m => m.provider === provider)?.model || '');
+
+    // 更新校验状态显示
+    if (isValid) {
+      validationStatus.className = 'validation-status success';
+      validationStatus.querySelector('.validation-text').textContent = 'API 校验成功';
+    } else {
+      validationStatus.className = 'validation-status error';
+      validationStatus.querySelector('.validation-text').textContent = 'API 校验失败，请检查配置';
+    }
+
+    // 恢复按钮状态
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+
+    // 保存配置
     const config = {
       id: id,
       name: name,
@@ -687,7 +837,8 @@
       model: modelInput || DEFAULT_MODELS.find(m => m.provider === provider)?.model || '',
       endpoint: document.getElementById('config-endpoint').value.trim() || DEFAULT_ENDPOINTS[provider] || '',
       apiKey: apiKey,
-      enabled: document.getElementById('config-enabled').checked
+      validated: isValid,
+      validationError: isValid ? '' : 'API 校验失败，请检查配置'
     };
 
     const existingIndex = state.apiConfigs.findIndex(c => c.id === id);
@@ -702,7 +853,29 @@
     renderConfigList();
     renderModelList();
     updateStartButton();
-    showToast('保存成功', 'success');
+
+    if (isValid) {
+      showToast('保存成功', 'success');
+    } else {
+      showToast('保存成功，但 API 校验失败', 'warning');
+    }
+  }
+
+  // 校验 API Key
+  async function validateApiKey(provider, apiKey, model) {
+    return new Promise((resolve) => {
+      // 发送消息到 background 进行校验
+      chrome.runtime.sendMessage({
+        type: 'VALIDATE_API',
+        data: {
+          provider: provider,
+          apiKey: apiKey,
+          model: model
+        }
+      }, (response) => {
+        resolve(response?.success || false);
+      });
+    });
   }
 
   // 渲染历史列表
