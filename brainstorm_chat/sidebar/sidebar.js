@@ -54,7 +54,6 @@
     modelCount: document.getElementById('model-count'),
     modeCount: document.getElementById('mode-count'),
     startBtn: document.getElementById('start-btn'),
-    expandedStartBtn: document.getElementById('expanded-start-btn'),
     emptyNewDiscussionBtn: document.getElementById('empty-new-discussion-btn'),
     configBtn: document.getElementById('config-btn'),
     historyBtn: document.getElementById('history-btn'),
@@ -273,11 +272,6 @@
         expandInputArea();
       }
     });
-
-    // 展开区域中的开始按钮
-    if (elements.expandedStartBtn) {
-      elements.expandedStartBtn.addEventListener('click', startDiscussion);
-    }
   }
 
   // 显示输入区
@@ -327,10 +321,12 @@
         }
 
         chip.addEventListener('click', (e) => {
-          // 如果点击的不是 checkbox 本身，切换 checkbox
-          if (e.target.tagName !== 'INPUT') {
-            checkbox.checked = !checkbox.checked;
-          }
+          // 阻止 label 的默认行为（自动切换 checkbox）
+          // 因为我们会手动处理
+          e.preventDefault();
+
+          // 手动切换 checkbox 状态
+          checkbox.checked = !checkbox.checked;
           chip.classList.toggle('active', checkbox.checked);
           updateSelectedModes();
           updateModeOrderDisplay();
@@ -1168,22 +1164,18 @@
       elements.historyBtn.addEventListener('click', () => switchView('history'));
     }
 
-    // 讨论模式（多选）- 兼容旧版
-    document.querySelectorAll('input[name="mode"]').forEach(checkbox => {
+    // 讨论模式（多选）- 兼容旧版 radio-card
+    document.querySelectorAll('.radio-card input[name="mode"]').forEach(checkbox => {
       // 添加初始选中状态
       if (checkbox.checked) {
-        const parent = checkbox.closest('.radio-card') || checkbox.closest('.mode-chip');
-        if (parent) parent.classList.add('selected');
+        const parent = checkbox.closest('.radio-card');
+        if (parent) parent.classList.add('active');
       }
 
       checkbox.addEventListener('change', () => {
-        const card = checkbox.closest('.radio-card') || checkbox.closest('.mode-chip');
+        const card = checkbox.closest('.radio-card');
         if (card) {
-          if (checkbox.checked) {
-            card.classList.add('selected');
-          } else {
-            card.classList.remove('selected');
-          }
+          card.classList.toggle('active', checkbox.checked);
         }
         updateSelectedModes();
       });
@@ -1556,11 +1548,6 @@
 
     if (elements.startBtn) {
       elements.startBtn.disabled = !canStart;
-    }
-
-    // 更新展开区域中的按钮
-    if (elements.expandedStartBtn) {
-      elements.expandedStartBtn.disabled = !canStart;
     }
   }
 
