@@ -250,6 +250,112 @@ body {
   flex: 1;
 }
 
+/* 讨论列表区域 */
+.discussion-section {
+  margin: 0 20px 16px;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.discussion-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.discussion-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.discussion-section-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  background: var(--hover-bg);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.discussion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.discussion-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.discussion-item:hover {
+  border-color: var(--primary-color);
+  background: var(--hover-bg);
+}
+
+.discussion-item.active {
+  border-color: var(--primary-color);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0.12) 100%);
+}
+
+.discussion-item-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.status-dot.active {
+  background: var(--primary-color);
+  animation: pulse 1.5s infinite;
+}
+
+.status-dot.completed {
+  background: var(--success-color);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.discussion-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discussion-item-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
 /* 主内容区 */
 .main-content {
   flex: 1;

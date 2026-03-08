@@ -239,6 +239,47 @@ const StateManager = {
   // 获取讨论标题（自动生成）
   getDiscussionTitle(projectName, discussionIndex) {
     return `${projectName} - 第${discussionIndex}次讨论`;
+  },
+
+  // ========== 进行中讨论持久化 ==========
+
+  // 保存当前讨论（用于页面刷新后恢复）
+  async saveCurrentDiscussion() {
+    return new Promise((resolve) => {
+      chrome.storage.local.set({
+        currentDiscussion: this.state.currentDiscussion,
+        isDiscussing: this.state.isDiscussing,
+        currentRound: this.state.currentRound,
+        currentModeIndex: this.state.currentModeIndex,
+        messages: this.state.messages
+      }, resolve);
+    });
+  },
+
+  // 加载当前讨论
+  async loadCurrentDiscussion() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['currentDiscussion', 'isDiscussing', 'currentRound', 'currentModeIndex', 'messages'], (result) => {
+        this.state.currentDiscussion = result.currentDiscussion || null;
+        this.state.isDiscussing = result.isDiscussing || false;
+        this.state.currentRound = result.currentRound || 1;
+        this.state.currentModeIndex = result.currentModeIndex || 0;
+        this.state.messages = result.messages || [];
+        resolve(this.state.currentDiscussion);
+      });
+    });
+  },
+
+  // 清除当前讨论（讨论已完成保存后调用）
+  async clearCurrentDiscussion() {
+    this.state.currentDiscussion = null;
+    this.state.isDiscussing = false;
+    this.state.currentRound = 1;
+    this.state.currentModeIndex = 0;
+    this.state.messages = [];
+    return new Promise((resolve) => {
+      chrome.storage.local.remove(['currentDiscussion', 'isDiscussing', 'currentRound', 'currentModeIndex', 'messages'], resolve);
+    });
   }
 };
 

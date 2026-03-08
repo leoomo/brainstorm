@@ -27,6 +27,11 @@
     projectNameInput: document.getElementById('project-name-input'),
     cancelProjectBtn: document.getElementById('cancel-project-btn'),
 
+    // 讨论列表
+    discussionSection: document.getElementById('discussion-section'),
+    discussionList: document.getElementById('discussion-list'),
+    discussionListCount: document.getElementById('discussion-list-count'),
+
     // 主界面
     requirementInput: document.getElementById('requirement-input'),
     modelList: document.getElementById('model-list'),
@@ -75,13 +80,16 @@
     await loadHistory();
     await StateManager.loadSelectedModels(); // 加载保存的模型选择
     await StateManager.loadProjects(); // 加载项目
+    await StateManager.loadCurrentDiscussion(); // 加载进行中的讨论
     initProjectSwitcher(); // 初始化项目切换器
+    renderDiscussionList(); // 渲染讨论列表
     bindEvents();
     setupMessageListener();
     renderModelList();
     updateSelectedModels(); // 初始化模型选择状态
     updateSelectedModes(); // 初始化模式选择状态
     updateStartButton();
+    restoreDiscussionIfNeeded(); // 恢复进行中的讨论
   }
 
   // 主题管理
@@ -128,13 +136,13 @@
     elements.newProjectBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       elements.projectNameInput.value = '';
-      elements.projectModal.classList.add('show');
+      elements.projectModal.classList.add('active');
       elements.projectNameInput.focus();
     });
 
     // 取消项目弹窗
     elements.cancelProjectBtn.addEventListener('click', () => {
-      elements.projectModal.classList.remove('show');
+      elements.projectModal.classList.remove('active');
     });
 
     // 提交项目表单
@@ -146,7 +154,7 @@
         await StateManager.switchProject(project.id);
         renderProjectList();
         updateProjectDisplay();
-        elements.projectModal.classList.remove('show');
+        elements.projectModal.classList.remove('active');
       }
     });
 
@@ -190,6 +198,111 @@
       elements.currentProjectName.textContent = project.name;
       elements.projectDiscussionCount.textContent = `${project.discussions.length}次讨论`;
     }
+  }
+
+  // ========== 讨论列表 ==========
+  function renderDiscussionList() {
+    const discussions = StateManager.getDiscussions();
+    const hasActiveDiscussion = state.currentDiscussion !== null;
+
+    // 显示/隐藏讨论区域
+    if (discussions.length > 0 || hasActiveDiscussion) {
+      elements.discussionSection.style.display = 'block';
+    } else {
+      elements.discussionSection.style.display = 'none';
+      return;
+    }
+
+    // 构建讨论列表 HTML
+    let html = '';
+
+    // 进行中的讨论（优先显示）
+    if (hasActiveDiscussion) {
+      html += `
+        <div class="discussion-item active" data-type="current">
+          <div class="discussion-item-status">
+            <span class="status-dot active"></span>
+            <span class="status-text">进行中</span>
+          </div>
+          <div class="discussion-item-title">${escapeHtml(state.currentDiscussion.title || '未命名讨论')}</div>
+          <div class="discussion-item-meta">${getModeName(state.currentDiscussion.modes?.[0])} · ${state.currentDiscussion.models?.length || 0}个模型</div>
+        </div>
+      `;
+    }
+
+    // 已完成的讨论
+    discussions.forEach((disc, index) => {
+      const isComplete = disc.finalDoc !== undefined;
+      html += `
+        <div class="discussion-item ${isComplete ? 'completed' : ''}" data-id="${disc.id}" data-index="${index}">
+          <div class="discussion-item-status">
+            <span class="status-dot ${isComplete ? 'completed' : ''}"></span>
+            <span class="status-text">${isComplete ? '已完成' : '待处理'}</span>
+          </div>
+          <div class="discussion-item-title">${escapeHtml(disc.title || '未命名讨论')}</div>
+          <div class="discussion-item-meta">${getModeName(disc.mode)} · ${formatDate(disc.createdAt)}</div>
+        </div>
+      `;
+    });
+
+    elements.discussionList.innerHTML = html;
+    elements.discussionListCount.textContent = discussions.length + (hasActiveDiscussion ? 1 : 0);
+
+    // 绑定点击事件
+    bindDiscussionItemEvents();
+  }
+
+  function bindDiscussionItemEvents() {
+    // 点击进行中的讨论 - 继续
+    const activeItem = elements.discussionList.querySelector('[data-type="current"]');
+    if (activeItem) {
+      activeItem.addEventListener('click', () => {
+        // 恢复讨论界面
+        switchView('discussion');
+        renderDiscussionMessages();
+        updateRoundIndicator();
+      });
+    }
+
+    // 点击已完成的讨论 - 查看文档
+    elements.discussionList.querySelectorAll('.discussion-item[data-id]').forEach(item => {
+      item.addEventListener('click', () => {
+        const discId = item.dataset.id;
+        const discIndex = parseInt(item.dataset.index);
+        const discussions = StateManager.getDiscussions();
+        const disc = discussions[discIndex];
+
+        if (disc && disc.finalDoc) {
+          state.currentDiscussion = disc;
+          elements.documentContent.innerHTML = marked.parse(disc.finalDoc);
+          switchView('document');
+        }
+      });
+    });
+  }
+
+  // 恢复进行中的讨论
+  function restoreDiscussionIfNeeded() {
+    if (state.currentDiscussion && state.isDiscussing) {
+      // 有进行中的讨论，更新UI显示
+      renderDiscussionList();
+    }
+  }
+
+  // 保存进行中的讨论
+  async function saveActiveDiscussion() {
+    if (state.currentDiscussion) {
+      state.currentDiscussion.messages = [...state.messages];
+      await StateManager.saveCurrentDiscussion();
+    }
+  }
+
+  // 清除进行中的讨论
+  async function clearActiveDiscussion() {
+    await StateManager.clearCurrentDiscussion();
+    renderDiscussionList();
+    renderProjectList();
+    updateProjectDisplay();
   }
 
   // 设置消息监听
@@ -531,6 +644,19 @@
     const requirement = elements.requirementInput.value.trim();
     if (!requirement || state.selectedModels.length === 0 || state.discussionModes.length === 0) return;
 
+    // 检查是否有进行中的讨论
+    if (state.currentDiscussion && state.isDiscussing) {
+      const choice = confirm('已有进行中的讨论，是否新建讨论？\n\n确定：新建讨论（当前讨论将被中断）\n取消：继续当前讨论');
+      if (!choice) {
+        // 继续当前讨论
+        switchView('discussion');
+        renderDiscussionMessages();
+        return;
+      }
+      // 用户选择新建，清除进行中的讨论
+      await clearActiveDiscussion();
+    }
+
     // 初始化讨论状态
     state.isDiscussing = true;
     state.currentRound = 1;
@@ -631,9 +757,10 @@
         });
         renderDiscussionMessages();
 
-        // 保存到当前讨论
+        // 保存到当前讨论并持久化
         if (state.currentDiscussion) {
           state.currentDiscussion.messages = [...state.messages];
+          await saveActiveDiscussion();
         }
       }
 
@@ -663,7 +790,7 @@
   }
 
   // 追加消息
-  function appendMessage(data) {
+  async function appendMessage(data) {
     const existingIndex = state.messages.findIndex(m => m.model === data.model);
 
     if (existingIndex >= 0) {
@@ -684,8 +811,9 @@
     // 更新模型状态指示
     updateModelStatus(data.model, data.isThinking);
 
-    // 保存到当前讨论
+    // 保存到当前讨论并持久化
     state.currentDiscussion.messages = [...state.messages];
+    await saveActiveDiscussion();
   }
 
   // 更新模型状态指示器
@@ -820,8 +948,8 @@
       finalDoc: state.currentDiscussion.finalDoc
     });
 
-    // 更新项目显示
-    updateProjectDisplay();
+    // 清除进行中的讨论状态
+    await clearActiveDiscussion();
 
     // 同时保留到历史（兼容）
     state.history.unshift(state.currentDiscussion);
