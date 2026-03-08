@@ -483,6 +483,7 @@ class BottomPanel extends HTMLElement {
           type: 'round-start',
           timestamp: msgTime,
           round: msgRound,
+          totalRounds: totalRounds,
           mode: msgMode || 'round-table'
         });
         lastRound = msgRound;
@@ -574,7 +575,7 @@ class BottomPanel extends HTMLElement {
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
             <span class="tl-action mode-label">
-              [MODE] ${this.getModeName(event.mode)} ${event.modeIndex + 1}/${event.totalModes}
+              → ${this.getModeName(event.mode)} mode (${event.modeIndex + 1}/${event.totalModes})
             </span>
           </div>
         `;
@@ -595,7 +596,7 @@ class BottomPanel extends HTMLElement {
           <div class="tl-event round-start">
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
-            <span class="tl-action round-label">[ROUND] ${event.round} begin</span>
+            <span class="tl-action round-label">○ Round ${event.round}/${event.totalRounds || 3}</span>
           </div>
         `;
 
