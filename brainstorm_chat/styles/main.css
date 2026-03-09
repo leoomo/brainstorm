@@ -101,6 +101,27 @@ body {
   transform: translateY(0);
 }
 
+/* 文档视图头部固定 */
+#document-view .header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-color);
+}
+
+#document-view .main-content {
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* 主视图头部固定 */
+#main-view .header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-color);
+}
+
 /* 头部 */
 .header {
   display: flex;
@@ -2016,6 +2037,9 @@ bottom-panel[data-state="fullscreen"] .panel-header {
   background: var(--card-bg);
   border-bottom: 1px solid var(--border-color);
   height: 52px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 /* 全屏时的全屏按钮 - 改为退出全屏 */
