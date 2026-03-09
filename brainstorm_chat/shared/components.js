@@ -523,30 +523,6 @@ class BottomPanel extends HTMLElement {
     });
     }
 
-    // 添加当前模型状态
-    // 使用一个稍晚的时间戳，确保在时间相同时 model-status 排在其他事件之后
-    const baseTime = new Date(discussion.updatedAt).getTime();
-    console.log('[BottomPanel] 处理模型状态:', models.map(m => ({ name: m.name, status: m.status, progress: m.progress, isHost: m.isHost })));
-    models.forEach((model, index) => {
-      // 只添加正在运行或有特殊状态的模型
-      const shouldAdd = model.status === 'running' || model.progress > 0;
-      console.log('[BottomPanel] 检查模型:', model.name, 'status:', model.status, 'progress:', model.progress, 'shouldAdd:', shouldAdd);
-      if (shouldAdd) {
-        events.push({
-          type: 'model-status',
-          timestamp: new Date(baseTime + 1000 + index * 10), // +1秒确保排在其他事件后
-          modelId: model.modelId,
-          modelName: model.name,
-          status: model.status,
-          progress: model.progress,
-          isHost: model.isHost,
-          mode: currentMode,
-          currentRound: discussion.currentRound || 1,
-          totalRounds: actualTotalRounds
-        });
-      }
-    });
-
     return events.sort((a, b) => {
       const timeA = new Date(a.timestamp);
       const timeB = new Date(b.timestamp);
@@ -625,17 +601,14 @@ class BottomPanel extends HTMLElement {
           </div>
         `;
 
-      case 'model-status':
-        const statusText = event.status === 'running' ? 'thinking...' : (event.status === 'completed' ? 'done' : event.status);
-        const progressBar = event.status === 'running' ? `
-          <span class="progress-text">${event.progress || 0}%</span>
-        ` : '';
+      case 'model-running':
+        const runningLabel = event.isHost ? 'HOST thinking...' : 'thinking...';
         return `
-          <div class="tl-event ${typeClass} ${event.status}">
+          <div class="tl-event model-running">
             <span class="tl-time">${time}</span>
             <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
-            <span class="tl-action">${statusText} ${progressBar}</span>
-            <span class="tl-status ${event.status}"></span>
+            <span class="tl-action status-running">${runningLabel}</span>
+            <span class="tl-status running"></span>
           </div>
         `;
 
@@ -645,6 +618,66 @@ class BottomPanel extends HTMLElement {
             <span class="tl-time">${time}</span>
             <span class="tl-actor">${Utils.escapeHtml(event.modelName)}</span>
             <span class="tl-action response-preview">${Utils.escapeHtml(event.content?.substring(0, 60) || '')}</span>
+          </div>
+        `;
+
+      case 'model-started':
+        const startedLabel = event.isHost ? 'HOST started' : 'started';
+        return `
+          <div class="tl-event model-started">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
+            <span class="tl-action status-started">${startedLabel}</span>
+            <span class="tl-status completed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+          </div>
+        `;
+
+      case 'model-completed':
+        const completedLabel = event.isHost ? 'HOST done' : 'done';
+        return `
+          <div class="tl-event model-completed">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
+            <span class="tl-action status-completed">${completedLabel}</span>
+            <span class="tl-status completed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+          </div>
+        `;
+
+      case 'model-error':
+        const errorLabel = event.isHost ? 'HOST failed' : 'failed';
+        return `
+          <div class="tl-event model-error">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
+            <span class="tl-action status-error">${errorLabel}</span>
+            <span class="tl-status error">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </span>
+          </div>
+        `;
+
+      case 'discussion-end':
+        const endLabel = event.status === 'error' ? 'Discussion failed' : 'Discussion completed';
+        const endIcon = event.status === 'error'
+          ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
+          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        return `
+          <div class="tl-event discussion-end ${event.status}">
+            <span class="tl-time">${time}</span>
+            <span class="tl-actor system">SYS</span>
+            <span class="tl-action status-completed">${endLabel}</span>
+            <span class="tl-status ${event.status}">${endIcon}</span>
           </div>
         `;
 

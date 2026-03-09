@@ -106,13 +106,16 @@ class DiscussionController {
 
   // 运行下一轮
   async runNextRound() {
-    console.log(`[DiscussionController] runNextRound - status: ${this.status}, modeIndex: ${this.currentModeIndex}, round: ${this.currentRound}`);
+    console.log(`[DiscussionController] runNextRound - status: ${this.status}, modeIndex: ${this.currentModeIndex}, round: ${this.currentRound}, totalRounds: ${this.totalRounds}, modes.length: ${this.modes.length}`);
 
-    if (this.status !== 'running') return;
+    if (this.status !== 'running') {
+      console.log(`[DiscussionController] runNextRound 提前返回: status = ${this.status}`);
+      return;
+    }
 
     // 检查是否所有模式都已完成
     if (this.currentModeIndex >= this.modes.length) {
-      console.log(`[DiscussionController] 所有模式已完成`);
+      console.log(`[DiscussionController] 所有模式已完成, modeIndex=${this.currentModeIndex}, modes.length=${this.modes.length}`);
       this.status = 'completed';
       this.broadcastUpdate({
         type: 'DISCUSSION_COMPLETED',
@@ -125,12 +128,13 @@ class DiscussionController {
 
     // 检查当前模式是否完成所有轮次
     if (this.currentRound > this.totalRounds) {
+      console.log(`[DiscussionController] 模式完成所有轮次, currentRound=${this.currentRound}, totalRounds=${this.totalRounds}`);
       // 切换到下一个模式
       this.currentModeIndex++;
       this.currentRound = 1;
 
       if (this.currentModeIndex >= this.modes.length) {
-        console.log(`[DiscussionController] 所有模式已完成 (切换后)`);
+        console.log(`[DiscussionController] 所有模式已完成 (切换后), modeIndex=${this.currentModeIndex}, modes.length=${this.modes.length}`);
         this.status = 'completed';
         this.broadcastUpdate({
           type: 'DISCUSSION_COMPLETED',
@@ -202,11 +206,16 @@ class DiscussionController {
         });
       }
 
+      console.log(`[DiscussionController] 轮次 ${this.currentRound} 结束, 即将 currentRound++, 然后调用 runNextRound()`);
       this.currentRound++;
+      console.log(`[DiscussionController] currentRound 变为 ${this.currentRound}, totalRounds = ${this.totalRounds}`);
 
       // 自动继续下一轮
       if (this.status === 'running') {
+        console.log(`[DiscussionController] 准备调用 runNextRound() 继续...`);
         await this.runNextRound();
+      } else {
+        console.log(`[DiscussionController] 状态不是 running, 不继续, status = ${this.status}`);
       }
     } catch (error) {
       console.error(`[DiscussionController] 轮次执行失败:`, error);
@@ -409,45 +418,74 @@ ${previousMessages.map(m => `- ${m.model}: ${m.content?.substring(0, 300)}...`).
     return results;
   }
 
-  // 带超时的模型调用
-  async callModelWithTimeout(model, systemPrompt, userPrompt, timeout = 120000) {
-    console.log('[callModelWithTimeout] 开始', { modelName: model.name, timeout });
+  // 带超时的模型调用（带重试）
+  async callModelWithTimeout(model, systemPrompt, userPrompt, timeout = 120000, maxRetries = 3) {
+    console.log('[callModelWithTimeout] 开始', { modelName: model.name, timeout, maxRetries });
 
-    let timer;
-    let checkCancelled;
+    let lastError;
 
-    const cleanup = () => {
-      if (timer) clearTimeout(timer);
-      if (checkCancelled) clearInterval(checkCancelled);
-    };
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[callModelWithTimeout] 第 ${attempt}/${maxRetries} 次尝试`, { modelName: model.name });
 
-    return Promise.race([
-      callModelAPI(model, systemPrompt, userPrompt),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => {
-          cleanup();
-          console.log('[callModelWithTimeout] 请求超时', { modelName: model.name });
-          reject(new Error('请求超时'));
-        }, timeout);
+        // 检查是否已取消
+        if (this.status === 'cancelled') {
+          throw new Error('已取消');
+        }
 
-        // 监听取消信号
-        checkCancelled = setInterval(() => {
-          if (this.status === 'cancelled') {
-            cleanup();
-            console.log('[callModelWithTimeout] 请求已取消', { modelName: model.name });
-            reject(new Error('已取消'));
-          }
-        }, 100);
-      })
-    ]).then(result => {
-      cleanup();
-      console.log('[callModelWithTimeout] 请求成功', { modelName: model.name, responseLength: result?.length });
-      return result;
-    }).catch(error => {
-      cleanup();
-      console.log('[callModelWithTimeout] 请求失败', { modelName: model.name, error: error.message });
-      throw error;
-    });
+        let timer;
+        let checkCancelled;
+
+        const cleanup = () => {
+          if (timer) clearTimeout(timer);
+          if (checkCancelled) clearInterval(checkCancelled);
+        };
+
+        const result = await Promise.race([
+          callModelAPI(model, systemPrompt, userPrompt),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              cleanup();
+              console.log('[callModelWithTimeout] 请求超时', { modelName: model.name });
+              reject(new Error('请求超时'));
+            }, timeout);
+
+            // 监听取消信号
+            checkCancelled = setInterval(() => {
+              if (this.status === 'cancelled') {
+                cleanup();
+                console.log('[callModelWithTimeout] 请求已取消', { modelName: model.name });
+                reject(new Error('已取消'));
+              }
+            }, 100);
+          })
+        ]);
+
+        cleanup();
+        console.log('[callModelWithTimeout] 请求成功', { modelName: model.name, responseLength: result?.length });
+        return result;
+
+      } catch (error) {
+        lastError = error;
+        console.log(`[callModelWithTimeout] 第 ${attempt} 次尝试失败`, { modelName: model.name, error: error.message });
+
+        // 如果是已取消，不重试
+        if (error.message === '已取消') {
+          throw error;
+        }
+
+        // 如果还有重试次数，等待后重试
+        if (attempt < maxRetries) {
+          const delay = attempt * 2000; // 递增延迟: 2s, 4s, 6s
+          console.log(`[callModelWithTimeout] 等待 ${delay}ms 后重试...`, { modelName: model.name });
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // 所有重试都失败
+    console.log(`[callModelWithTimeout] 所有 ${maxRetries} 次尝试都失败`, { modelName: model.name, error: lastError.message });
+    throw lastError;
   }
 
   // 执行主持人汇总

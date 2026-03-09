@@ -2422,7 +2422,7 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 }
 
 .item-status .status-dot.running {
-  background: #22c55e;
+  background: #3b82f6;
   animation: pulse-animation 2s infinite;
 }
 
@@ -2431,7 +2431,7 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 }
 
 .item-status .status-dot.completed {
-  background: #9ca3af;
+  background: #22c55e;
 }
 
 .item-status .status-dot.error {
@@ -3098,25 +3098,45 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 
 /* Status Indicator */
 .tl-status {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tl-status svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Default dot for pending */
+.tl-status:not(.completed):not(.error):not(.running) {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--text-tertiary);
-  margin-top: 3px;
-  flex-shrink: 0;
 }
 
 .tl-status.running {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: var(--primary-color);
   animation: chip-pulse 1.5s infinite;
 }
 
+.tl-status.running svg {
+  display: none;
+}
+
 .tl-status.completed {
-  background: var(--success-color);
+  color: var(--success-color);
 }
 
 .tl-status.error {
-  background: var(--danger-color);
+  color: var(--danger-color);
 }
 
 /* Host Summary Event - Block Style */

@@ -881,19 +881,48 @@
           break;
 
         case 'MODEL_STATUS_UPDATE':
-          console.log('[Sidebar] 收到 MODEL_STATUS_UPDATE', {
-            discussionId,
-            modelId: message.modelId,
-            status: message.status,
-            progress: message.progress,
-            isHost: message.isHost,
-            responseLength: message.response?.length
-          });
           StateManager.updateModelStatus(
             discussionId,
             message.modelId,
             { status: message.status, progress: message.progress, response: message.response, error: message.error, isHost: message.isHost }
           );
+
+          // 添加独立事件到时间线
+          const discussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (discussion) {
+            if (!discussion.timelineEvents) {
+              discussion.timelineEvents = [];
+            }
+
+            // 根据状态添加不同类型的事件
+            let eventType, eventStatus;
+            if (message.status === 'running') {
+              eventType = 'model-running';
+              eventStatus = 'running';
+            } else if (message.status === 'completed') {
+              eventType = 'model-completed';
+              eventStatus = 'done';
+            } else if (message.status === 'error') {
+              eventType = 'model-error';
+              eventStatus = 'failed';
+            }
+
+            if (eventType) {
+              // 获取模型名称
+              const model = discussion.models?.find(m => m.modelId === message.modelId);
+              const modelName = model?.name || message.modelId;
+
+              discussion.timelineEvents.push({
+                type: eventType,
+                timestamp: new Date().toISOString(),
+                modelId: message.modelId,
+                modelName: modelName,
+                status: eventStatus,
+                isHost: message.isHost
+              });
+            }
+          }
+
           // 如果当前正在查看这个讨论，更新面板
           if (StateManager.state.activeDiscussionId === discussionId) {
             updateBottomPanelContent();
@@ -1052,17 +1081,54 @@
           }
           break;
 
-        case 'DISCUSSION_COMPLETED':
+        case 'DISCUSSION_COMPLETED': {
           StateManager.updateDiscussionProgress(discussionId, { status: 'completed', progress: 100 });
+          // 添加讨论结束时间线事件
+          const completedDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (completedDiscussion) {
+            if (!completedDiscussion.timelineEvents) {
+              completedDiscussion.timelineEvents = [];
+            }
+            completedDiscussion.timelineEvents.push({
+              type: 'discussion-end',
+              timestamp: new Date().toISOString(),
+              status: 'completed'
+            });
+            StateManager.saveDiscussions();
+            // 如果当前正在查看这个讨论，更新面板
+            if (StateManager.state.activeDiscussionId === discussionId) {
+              updateBottomPanelContent();
+            }
+          }
           renderDashboard();
           showToast('讨论完成！', 'success');
           break;
+        }
 
-        case 'DISCUSSION_ERROR':
+        case 'DISCUSSION_ERROR': {
           StateManager.updateDiscussionProgress(discussionId, { status: 'error', error: message.error });
+          // 添加讨论结束时间线事件
+          const errorDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
+          if (errorDiscussion) {
+            if (!errorDiscussion.timelineEvents) {
+              errorDiscussion.timelineEvents = [];
+            }
+            errorDiscussion.timelineEvents.push({
+              type: 'discussion-end',
+              timestamp: new Date().toISOString(),
+              status: 'error',
+              error: message.error
+            });
+            StateManager.saveDiscussions();
+            // 如果当前正在查看这个讨论，更新面板
+            if (StateManager.state.activeDiscussionId === discussionId) {
+              updateBottomPanelContent();
+            }
+          }
           renderDashboard();
           showToast(`讨论出错: ${message.error}`, 'error');
           break;
+        }
 
         case 'DISCUSSION_PAUSED':
           StateManager.updateDiscussionProgress(discussionId, { status: 'paused' });
