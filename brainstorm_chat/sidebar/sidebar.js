@@ -383,10 +383,18 @@
   function renderModelChips() {
     if (!elements.modelChips) return;
 
-    const enabledModels = state.apiConfigs.filter(c => c.validated);
-    const disabledModels = state.apiConfigs.filter(c => !c.validated);
-    const savedSelection = state.selectedModels || [];
     const hostModelId = state.hostModelId;
+
+    // 主持人模型排在最前面
+    const sortByHost = (a, b) => {
+      if (a.id === hostModelId) return -1;
+      if (b.id === hostModelId) return 1;
+      return 0;
+    };
+
+    const enabledModels = state.apiConfigs.filter(c => c.validated).sort(sortByHost);
+    const disabledModels = state.apiConfigs.filter(c => !c.validated).sort(sortByHost);
+    const savedSelection = state.selectedModels || [];
 
     // 获取初始选择状态
     const getInitialSelection = (configId) => {
@@ -1729,8 +1737,17 @@
 
     // 获取保存的选择，如果没有保存则使用已启用的模型
     const savedSelection = state.selectedModels || [];
-    const enabledModels = state.apiConfigs.filter(c => c.validated);
-    const disabledModels = state.apiConfigs.filter(c => !c.validated);
+    const hostModelId = state.hostModelId;
+
+    // 主持人模型排在最前面
+    const sortByHost = (a, b) => {
+      if (a.id === hostModelId) return -1;
+      if (b.id === hostModelId) return 1;
+      return 0;
+    };
+
+    const enabledModels = state.apiConfigs.filter(c => c.validated).sort(sortByHost);
+    const disabledModels = state.apiConfigs.filter(c => !c.validated).sort(sortByHost);
 
     // 决定哪些模型应该被选中：优先使用保存的选择，否则使用已校验的
     const getInitialSelection = (configId) => {
