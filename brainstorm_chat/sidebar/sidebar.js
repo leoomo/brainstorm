@@ -82,6 +82,7 @@
 
     // 文档界面
     docBackBtn: document.getElementById('doc-back-btn'),
+    docCopyBtn: document.getElementById('doc-copy-btn'),
     docExportBtn: document.getElementById('doc-export-btn'),
     documentContent: document.getElementById('document-content'),
 
@@ -1549,6 +1550,7 @@
 
     // 文档界面
     elements.docBackBtn.addEventListener('click', () => switchView('main'));
+    elements.docCopyBtn.addEventListener('click', copyDocument);
     elements.docExportBtn.addEventListener('click', exportDocument);
 
     // 键盘快捷键
@@ -2263,6 +2265,18 @@
       const content = state.messages.map(m => `## ${m.model}\n\n${m.content}`).join('\n\n---\n\n');
       downloadFile('discussion.md', content);
       showToast('讨论消息已下载', 'success');
+    }
+  }
+
+  // 复制文档
+  async function copyDocument() {
+    if (state.currentDiscussion?.finalDoc) {
+      try {
+        await navigator.clipboard.writeText(state.currentDiscussion.finalDoc);
+        showToast('文档已复制到剪贴板', 'success');
+      } catch (err) {
+        showToast('复制失败，请手动复制', 'error');
+      }
     }
   }
 
