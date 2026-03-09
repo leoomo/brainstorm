@@ -524,12 +524,14 @@ class BottomPanel extends HTMLElement {
     });
 
     // 添加当前模型状态
-    models.forEach(model => {
+    // 使用一个稍晚的时间戳，确保在时间相同时 model-status 排在其他事件之后
+    const baseTime = new Date(discussion.updatedAt).getTime();
+    models.forEach((model, index) => {
       // 只添加正在运行或有特殊状态的模型
       if (model.status === 'running' || model.progress > 0) {
         events.push({
           type: 'model-status',
-          timestamp: discussion.updatedAt,
+          timestamp: new Date(baseTime + 1000 + index * 10), // +1秒确保排在其他事件后
           modelId: model.modelId,
           modelName: model.name,
           status: model.status,
