@@ -11,7 +11,6 @@
     mainView: document.getElementById('main-view'),
     discussionView: document.getElementById('discussion-view'),
     configView: document.getElementById('config-view'),
-    historyView: document.getElementById('history-view'),
     documentView: document.getElementById('document-view'),
 
     // 新 Header 项目管理
@@ -56,7 +55,6 @@
     startBtn: document.getElementById('start-btn'),
     emptyNewDiscussionBtn: document.getElementById('empty-new-discussion-btn'),
     configBtn: document.getElementById('config-btn'),
-    historyBtn: document.getElementById('history-btn'),
 
     // 讨论界面
     backBtn: document.getElementById('back-btn'),
@@ -82,15 +80,10 @@
     themeDark: document.getElementById('theme-dark'),
     themeAuto: document.getElementById('theme-auto'),
 
-    // 历史界面
-    historyBackBtn: document.getElementById('history-back-btn'),
-    historyList: document.getElementById('history-list'),
-
     // 文档界面
     docBackBtn: document.getElementById('doc-back-btn'),
     docExportBtn: document.getElementById('doc-export-btn'),
     documentContent: document.getElementById('document-content'),
-    saveDocBtn: document.getElementById('save-doc-btn'),
 
     // 主题切换
     themeToggle: document.getElementById('theme-toggle')
@@ -100,7 +93,6 @@
   async function init() {
     initTheme();
     await loadApiConfigs();
-    await loadHistory();
     await StateManager.loadSelectedModels(); // 加载保存的模型选择
     await StateManager.loadHostModel(); // 加载主持人模型
     await StateManager.loadProjects(); // 加载项目
@@ -1503,9 +1495,6 @@
     elements.requirementInput.addEventListener('input', updateStartButton);
     elements.startBtn.addEventListener('click', startDiscussion);
     elements.configBtn.addEventListener('click', () => switchView('config'));
-    if (elements.historyBtn) {
-      elements.historyBtn.addEventListener('click', () => switchView('history'));
-    }
 
     // 讨论模式（多选）- 兼容旧版 radio-card
     document.querySelectorAll('.radio-card input[name="mode"]').forEach(checkbox => {
@@ -1558,15 +1547,9 @@
     elements.cancelConfigBtn.addEventListener('click', closeConfigModal);
     elements.configForm.addEventListener('submit', saveConfig);
 
-    // 历史界面
-    if (elements.historyBackBtn) {
-      elements.historyBackBtn.addEventListener('click', () => switchView('main'));
-    }
-
     // 文档界面
     elements.docBackBtn.addEventListener('click', () => switchView('main'));
     elements.docExportBtn.addEventListener('click', exportDocument);
-    elements.saveDocBtn.addEventListener('click', saveToHistory);
 
     // 键盘快捷键
     document.addEventListener('keydown', (e) => {
@@ -1586,7 +1569,7 @@
           elements.projectModal.classList.remove('active');
         } else if (state.currentView === 'discussion') {
           elements.backBtn.click();
-        } else if (state.currentView === 'config' || state.currentView === 'history' || state.currentView === 'document') {
+        } else if (state.currentView === 'config' || state.currentView === 'document') {
           switchView('main');
         }
       }
@@ -1611,10 +1594,6 @@
       case 'config':
         elements.configView.classList.add('active');
         renderConfigList();
-        break;
-      case 'history':
-        elements.historyView.classList.add('active');
-        renderHistoryList();
         break;
       case 'document':
         elements.documentView.classList.add('active');
@@ -1708,9 +1687,6 @@
 
   // 保存 API 配置
   const saveApiConfigs = StateManager.saveApiConfigs.bind(StateManager);
-
-  // 加载历史
-  const loadHistory = StateManager.loadHistory.bind(StateManager);
 
   // 渲染模型列表 - 芯片式设计 (兼容旧版)
   function renderModelList() {
@@ -2297,27 +2273,6 @@
     }
   }
 
-  // 保存到历史
-  async function saveToHistory() {
-    // 保存到当前项目
-    await StateManager.addDiscussionToProject({
-      title: state.currentDiscussion.title,
-      requirement: state.currentDiscussion.requirement,
-      mode: state.currentDiscussion.modes[0],
-      models: state.currentDiscussion.models,
-      finalDoc: state.currentDiscussion.finalDoc
-    });
-
-    // 清除进行中的讨论状态
-    await clearActiveDiscussion();
-
-    // 同时保留到历史（兼容）
-    state.history.unshift(state.currentDiscussion);
-    await StateManager.saveHistory();
-
-    showToast('已保存到项目', 'success');
-  }
-
   // 渲染配置列表
   function renderConfigList() {
     if (state.apiConfigs.length === 0) {
@@ -2560,90 +2515,6 @@
           return;
         }
         resolve(response?.success || false);
-      });
-    });
-  }
-
-  // 渲染历史列表
-  function renderHistoryList() {
-    if (state.history.length === 0) {
-      elements.historyList.innerHTML = '<div class="history-empty">暂无历史记录</div>';
-      return;
-    }
-
-    elements.historyList.innerHTML = state.history.map(item => `
-      <div class="history-item" data-id="${item.id}">
-        <div class="history-title">${escapeHtml(item.title)}</div>
-        <div class="history-meta">${formatDate(item.createdAt)} · ${getModeName(item.mode)} · ${item.models.length}个模型</div>
-        <div class="history-actions">
-          <button class="btn btn-secondary view-doc-btn">查看文档</button>
-          <button class="btn btn-danger delete-history-btn">删除</button>
-        </div>
-      </div>
-    `).join('');
-
-    // 绑定事件
-    elements.historyList.querySelectorAll('.history-item').forEach(item => {
-      const id = item.dataset.id;
-
-      item.querySelector('.view-doc-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const history = state.history.find(h => h.id === id);
-        if (!history) return;
-
-        // 如果已有文档，直接显示
-        if (history.finalDoc) {
-          state.currentDiscussion = history;
-          elements.documentContent.innerHTML = marked.parse(history.finalDoc);
-          switchView('document');
-        } else {
-          // 动态生成文档
-          showToast('正在生成文档...', 'info');
-          try {
-            const messages = history.messages?.flatMap(m => m.responses.map(r => ({
-              model: r.model,
-              content: r.content
-            }))) || [];
-
-            if (!messages.length) {
-              showToast('无讨论内容可生成文档', 'error');
-              return;
-            }
-
-            const response = await chrome.runtime.sendMessage({
-              type: 'GENERATE_DOCUMENT',
-              data: {
-                messages,
-                requirement: history.requirement
-              }
-            });
-
-            if (response?.data?.document) {
-              // 保存生成的文档
-              history.finalDoc = response.data.document;
-              await StateManager.saveHistory();
-
-              // 显示文档
-              state.currentDiscussion = history;
-              elements.documentContent.innerHTML = marked.parse(history.finalDoc);
-              switchView('document');
-              showToast('文档生成成功', 'success');
-            }
-          } catch (error) {
-            showToast('生成文档失败: ' + error.message, 'error');
-          }
-        }
-      });
-
-      item.querySelector('.delete-history-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm('确定要删除这条历史记录吗？')) {
-          state.history = state.history.filter(h => h.id !== id);
-          StateManager.saveHistory().then(() => {
-            renderHistoryList();
-            showToast('删除成功', 'success');
-          });
-        }
       });
     });
   }

@@ -29,8 +29,7 @@ const StateManager = {
     currentDiscussion: null,
     currentRound: 1,
     isDiscussing: false,
-    messages: [],
-    history: []
+    messages: []
   },
 
   // 订阅者列表
@@ -452,25 +451,6 @@ const StateManager = {
   async saveHostModel() {
     return new Promise((resolve) => {
       chrome.storage.local.set({ hostModelId: this.state.hostModelId }, resolve);
-    });
-  },
-
-  // ========== 历史记录 (兼容旧版本) ==========
-
-  // 加载历史
-  async loadHistory() {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['history'], (result) => {
-        this.state.history = result.history || [];
-        resolve(this.state.history);
-      });
-    });
-  },
-
-  // 保存历史
-  async saveHistory() {
-    return new Promise((resolve) => {
-      chrome.storage.local.set({ history: this.state.history }, resolve);
     });
   },
 

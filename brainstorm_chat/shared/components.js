@@ -43,31 +43,6 @@ const Components = {
     return item;
   },
 
-  // 创建历史项 HTML
-  createHistoryItem(history) {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.dataset.id = history.id;
-
-    const modeNames = (history.modes || []).map(m => Utils.getModeName(m)).join(' / ');
-    const modelNames = (history.models || []).join(', ');
-
-    item.innerHTML = `
-      <div class="history-title">${Utils.escapeHtml(history.title)}</div>
-      <div class="history-meta">
-        <span>${Utils.formatDate(history.createdAt)}</span>
-        <span>${modeNames}</span>
-        <span>${modelNames}</span>
-      </div>
-      <div class="history-actions">
-        <button class="btn btn-secondary view-doc-btn">查看文档</button>
-        <button class="btn btn-secondary delete-history-btn">删除</button>
-      </div>
-    `;
-
-    return item;
-  },
-
   // 创建消息项 HTML
   createMessage(msg) {
     const div = document.createElement('div');
