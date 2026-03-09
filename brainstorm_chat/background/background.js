@@ -329,10 +329,12 @@ class DiscussionController {
       this.updateModelStatus(modelId, 'running', 0);
 
       try {
+        console.log('[executeBrainstorm] 开始调用 callModelWithTimeout:', { modelId, name: model.name });
         const response = await this.callModelWithTimeout(model, systemPrompt, userPrompt);
-        console.log('[executeBrainstorm] 模型调用成功:', { modelId, responseLength: response?.length });
+        console.log('[executeBrainstorm] 模型调用成功, 准备更新状态:', { modelId, name: model.name, responseLength: response?.length });
 
         this.updateModelStatus(modelId, 'completed', 100, response);
+        console.log('[executeBrainstorm] 模型状态已更新为 completed:', { modelId, name: model.name });
 
         return {
           model: model.name,
@@ -342,6 +344,7 @@ class DiscussionController {
         console.error(`[executeBrainstorm] 模型 ${model.name} 调用失败:`, error);
 
         this.updateModelStatus(modelId, 'error', 0, null, error.message);
+        console.log('[executeBrainstorm] 模型状态已更新为 error:', { modelId, name: model.name });
 
         return {
           model: model.name,
