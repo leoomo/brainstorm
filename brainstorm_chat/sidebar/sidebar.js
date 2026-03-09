@@ -1564,7 +1564,7 @@
     }
 
     // 文档界面
-    elements.docBackBtn.addEventListener('click', () => switchView('discussion'));
+    elements.docBackBtn.addEventListener('click', () => switchView('main'));
     elements.docExportBtn.addEventListener('click', exportDocument);
     elements.saveDocBtn.addEventListener('click', saveToHistory);
 
