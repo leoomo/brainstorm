@@ -194,7 +194,8 @@ class DiscussionCard extends HTMLElement {
       return;
     }
 
-    const { id, title, status, progress, models = [], currentRound = 1, totalRounds = 3 } = this.discussion;
+    const { id, title, status, progress, models = [], currentRound = 1, modes = [] } = this.discussion;
+    const totalRounds = this.discussion.totalRounds || modes.length || 1;
 
     const isRunning = status === 'running';
     const isPaused = status === 'paused';
@@ -440,19 +441,24 @@ class BottomPanel extends HTMLElement {
    */
   generateTimelineEvents(discussion) {
     const events = [];
-    const { models = [], messages = [], currentRound = 1, totalRounds = 3, modes = [], currentModeIndex = 0 } = discussion;
+    const { models = [], messages = [], currentRound = 1, totalRounds, modes = [], currentModeIndex = 0 } = discussion;
+    // 如果 totalRounds 未定义，使用 modes.length（至少为1）
+    const actualTotalRounds = totalRounds || modes.length || 1;
 
-    // 如果有预存储的时间线事件，优先使用
-    if (discussion.timelineEvents && discussion.timelineEvents.length > 0) {
-      return discussion.timelineEvents;
+    // 使用预存储的时间线事件作为基础
+    const hasStoredEvents = discussion.timelineEvents && discussion.timelineEvents.length > 0;
+    if (hasStoredEvents) {
+      events.push(...discussion.timelineEvents);
     }
 
-    // 添加讨论启动事件
-    events.push({
-      type: 'discussion-start',
-      timestamp: discussion.createdAt,
-      title: discussion.title
-    });
+    // 添加讨论启动事件（仅当没有预存储事件时）
+    if (!hasStoredEvents) {
+      events.push({
+        type: 'discussion-start',
+        timestamp: discussion.createdAt,
+        title: discussion.title
+      });
+    }
 
     // 基于消息历史重建时间线
     let lastMode = null;
@@ -592,11 +598,13 @@ class BottomPanel extends HTMLElement {
         `;
 
       case 'round-start':
+        // 智能获取总轮次数：优先使用事件中的值，否则从讨论对象获取
+        const eventTotalRounds = event.totalRounds || this.currentDiscussion?.totalRounds || this.currentDiscussion?.modes?.length || 1;
         return `
           <div class="tl-event round-start">
             <span class="tl-time">${time}</span>
             <span class="tl-actor system">SYS</span>
-            <span class="tl-action round-label">○ Round ${event.round}/${event.totalRounds || 3}</span>
+            <span class="tl-action round-label">○ Round ${event.round}/${eventTotalRounds}</span>
           </div>
         `;
 
@@ -714,7 +722,9 @@ class BottomPanel extends HTMLElement {
       return;
     }
 
-    const { models = [], currentRound = 1, totalRounds = 3, progress = 0 } = discussion;
+    // 智能获取 totalRounds：优先使用讨论对象的值，否则使用 modes.length，最后默认 1
+    const { models = [], currentRound = 1, progress = 0, modes = [] } = discussion;
+    const totalRounds = discussion.totalRounds || modes.length || 1;
     const events = this.generateTimelineEvents(discussion);
 
     console.log('[BottomPanel] 生成时间线', {
@@ -738,18 +748,6 @@ class BottomPanel extends HTMLElement {
       </div>
     `;
 
-    // 模型状态栏 (单行)
-    const statusBarHtml = `
-      <div class="status-bar">
-        ${models.map(m => `
-          <span class="status-chip ${m.status} ${m.isHost ? 'host' : ''}" data-model="${m.modelId}">
-            <span class="chip-dot"></span>
-            <span class="chip-name">${Utils.escapeHtml(m.name)}</span>
-          </span>
-        `).join('')}
-      </div>
-    `;
-
     // 时间线日志
     const timelineHtml = events.length > 0
       ? events.map(e => this.renderTimelineEvent(e)).join('')
@@ -758,7 +756,6 @@ class BottomPanel extends HTMLElement {
     content.innerHTML = `
       <div class="discussion-timeline">
         ${headerHtml}
-        ${statusBarHtml}
         <div class="timeline-log" id="timeline-log">
           ${timelineHtml}
         </div>

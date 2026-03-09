@@ -583,7 +583,7 @@
           </div>
           <div class="item-content">
             <div class="item-title">${escapeHtml(discussion.title || '未命名讨论')}</div>
-            <div class="item-meta">${statusText} · 第${discussion.currentRound || 1}/${discussion.totalRounds || 3}轮</div>
+            <div class="item-meta">${statusText} · 第${discussion.currentRound || 1}/${discussion.totalRounds || discussion.modes?.length || 1}轮</div>
           </div>
           <div class="item-time">${timeText}</div>
         </div>
@@ -626,7 +626,7 @@
           </div>
           <div class="item-content">
             <div class="item-title">${escapeHtml(discussion.title || '未命名讨论')}</div>
-            <div class="item-meta">已完成 · ${discussion.totalRounds || 3}轮</div>
+            <div class="item-meta">已完成 · ${discussion.totalRounds || discussion.modes?.length || 1}轮</div>
           </div>
           <div class="item-time">${timeText}</div>
         </div>
@@ -912,7 +912,7 @@
               responses: message.results
             });
             // 更新轮次 - 不超过总轮次
-            const totalRounds = roundDiscussion.totalRounds || 3;
+            const totalRounds = roundDiscussion.totalRounds || roundDiscussion.modes?.length || 1;
             const newRound = Math.min(message.round + 1, totalRounds);
             roundDiscussion.currentRound = newRound;
             roundDiscussion.updatedAt = new Date().toISOString();
@@ -958,12 +958,15 @@
 
         case 'ROUND_START':
           // 轮次开始 - 更新时间线
+          const roundStartDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
           console.log('[Sidebar] ROUND_START', {
             discussionId,
             round: message.round,
-            mode: message.mode
+            mode: message.mode,
+            discussionTotalRounds: roundStartDiscussion?.totalRounds,
+            discussionModes: roundStartDiscussion?.modes,
+            discussionModesLength: roundStartDiscussion?.modes?.length
           });
-          const roundStartDiscussion = StateManager.state.discussions.find(d => d.id === discussionId);
           if (roundStartDiscussion) {
             // 添加时间线事件
             if (!roundStartDiscussion.timelineEvents) {
@@ -973,6 +976,7 @@
               type: 'round-start',
               timestamp: new Date().toISOString(),
               round: message.round,
+              totalRounds: roundStartDiscussion.totalRounds, // 添加总轮次数
               mode: message.mode
             });
             // 更新当前轮次

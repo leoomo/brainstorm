@@ -107,6 +107,12 @@ const StateManager = {
 
     // 支持单模式字符串或多模式数组
     const modesArray = Array.isArray(modes) ? modes : [modes];
+    console.log('[StateManager] modesArray 创建', {
+      originalModes: modes,
+      modesArray,
+      modesArrayLength: modesArray.length,
+      calculatedTotalRounds: modesArray.length
+    });
 
     return {
       id: this.generateId('disc'),

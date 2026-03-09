@@ -96,6 +96,7 @@ body {
 
 .view.active {
   display: flex;
+  flex: 1;
   opacity: 1;
   transform: translateY(0);
 }
@@ -2045,7 +2046,7 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 
 .panel-content {
   padding: 16px;
-  height: calc(100% - 45px);
+  max-height: calc(280px - 45px);
   overflow-y: auto;
 }
 
@@ -2253,7 +2254,7 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 
 /* 适配底部面板的主内容区域 */
 #main-view {
-  padding-bottom: 40px;
+  padding-bottom: 70px;
 }
 
 /* ========== 新 UI 样式 (v2.0 Redesign) ========== */
@@ -2843,7 +2844,6 @@ bottom-panel[data-state="fullscreen"] .panel-content {
 .discussion-timeline {
   display: flex;
   flex-direction: column;
-  height: 100%;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Fira Code', monospace;
   font-size: 10px;
   line-height: 1.5;
