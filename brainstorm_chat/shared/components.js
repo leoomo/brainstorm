@@ -543,159 +543,66 @@ class BottomPanel extends HTMLElement {
   }
 
   /**
-   * 渲染时间线事件 (v2.1 - Log Viewer Style)
+   * 渲染时间线事件 (v3.0 - Vertical Timeline Design)
    */
-  renderTimelineEvent(event) {
+  renderTimelineEvent(event, isLatest = false) {
     const time = this.formatTime(event.timestamp);
-    const typeClass = event.type;
 
     switch (event.type) {
       case 'discussion-start':
-        return `
-          <div class="tl-event discussion-start">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor system">SYS</span>
-            <span class="tl-action">[START] Discussion initialized</span>
-          </div>
-        `;
+        return this.renderSimpleEvent({
+          time,
+          icon: 'start',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>',
+          text: '<strong>Discussion started</strong>'
+        });
 
       case 'mode-start':
-        return `
-          <div class="tl-event mode-start">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor system">SYS</span>
-            <span class="tl-action mode-label">
-              → ${this.getModeName(event.mode)} mode (${event.modeIndex + 1}/${event.totalModes})
-            </span>
-          </div>
-        `;
+        return this.renderSimpleEvent({
+          time,
+          icon: 'mode',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+          text: `<strong>${this.getModeName(event.mode)}</strong> mode activated`
+        });
 
       case 'mode-end':
-        return `
-          <div class="tl-event mode-end">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor system">SYS</span>
-            <span class="tl-action mode-label completed">
-              [DONE] ${this.getModeName(event.mode)}
-            </span>
-          </div>
-        `;
+        return this.renderSimpleEvent({
+          time,
+          icon: 'end',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+          text: `<strong>${this.getModeName(event.mode)}</strong> completed`
+        });
 
       case 'round-start':
-        // 智能获取总轮次数：优先使用事件中的值，否则从讨论对象获取
-        const eventTotalRounds = event.totalRounds || this.currentDiscussion?.totalRounds || this.currentDiscussion?.modes?.length || 1;
-        return `
-          <div class="tl-event round-start">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor system">SYS</span>
-            <span class="tl-action round-label">○ Round ${event.round}/${eventTotalRounds}</span>
-          </div>
-        `;
+        const totalRounds = event.totalRounds || this.currentDiscussion?.totalRounds || this.currentDiscussion?.modes?.length || 1;
+        return this.renderSimpleEvent({
+          time,
+          icon: 'round',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+          text: `Round <strong>${event.round}/${totalRounds}</strong> started`
+        });
 
       case 'round-end':
-        return `
-          <div class="tl-event round-end">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor system">SYS</span>
-            <span class="tl-action round-label completed">[ROUND] ${event.round} done</span>
-          </div>
-        `;
+        return this.renderSimpleEvent({
+          time,
+          icon: 'end',
+          iconSvg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+          text: `Round <strong>${event.round}</strong> completed`
+        });
 
-      case 'model-running':
-        const runningLabel = event.isHost ? 'HOST thinking...' : 'thinking...';
-        return `
-          <div class="tl-event model-running">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
-            <span class="tl-action status-running">${runningLabel}</span>
-            <span class="tl-status running"></span>
-          </div>
-        `;
-
-      case 'model-response':
-        return `
-          <div class="tl-event ${typeClass}">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor">${Utils.escapeHtml(event.modelName)}</span>
-            <span class="tl-action response-preview">${Utils.escapeHtml(event.content?.substring(0, 60) || '')}</span>
-          </div>
-        `;
-
-      case 'model-started':
-        const startedLabel = event.isHost ? 'HOST started' : 'started';
-        return `
-          <div class="tl-event model-started">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
-            <span class="tl-action status-started">${startedLabel}</span>
-            <span class="tl-status completed">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-          </div>
-        `;
-
-      case 'model-completed':
-        const completedLabel = event.isHost ? 'HOST done' : 'done';
-        return `
-          <div class="tl-event model-completed">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
-            <span class="tl-action status-completed">${completedLabel}</span>
-            <span class="tl-status completed">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-          </div>
-        `;
-
-      case 'model-error':
-        const errorLabel = event.isHost ? 'HOST failed' : 'failed';
-        return `
-          <div class="tl-event model-error">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
-            <span class="tl-action status-error">${errorLabel}</span>
-            <span class="tl-status error">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </span>
-          </div>
-        `;
+      case 'round-execution':
+        return this.renderRoundExecutionEvent(event, time, isLatest);
 
       case 'discussion-end':
-        const endLabel = event.status === 'error' ? 'Discussion failed' : 'Discussion completed';
-        const endIcon = event.status === 'error'
-          ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
-          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-        return `
-          <div class="tl-event discussion-end ${event.status}">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor system">SYS</span>
-            <span class="tl-action status-completed">${endLabel}</span>
-            <span class="tl-status ${event.status}">${endIcon}</span>
-          </div>
-        `;
-
-      case 'host-summary':
-        return `
-          <div class="tl-event host-summary">
-            <span class="tl-time">${time}</span>
-            <span class="tl-actor host">
-              <svg class="icon-mini" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              </svg>
-              HOST
-            </span>
-            <span class="tl-stage">${this.getStageText(event.stage)}</span>
-            <div class="tl-summary">${Utils.escapeHtml(event.content?.substring(0, 120) || '')}</div>
-          </div>
-        `;
+        const isError = event.status === 'error';
+        return this.renderSimpleEvent({
+          time,
+          icon: isError ? 'error' : 'end',
+          iconSvg: isError
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+          text: isError ? '<strong>Discussion failed</strong>' : '<strong>Discussion completed</strong>'
+        });
 
       default:
         return '';
@@ -703,15 +610,170 @@ class BottomPanel extends HTMLElement {
   }
 
   /**
-   * 获取模式名称 - 简短版本
+   * 渲染简单事件 (discussion-start, mode-start, etc.)
+   */
+  renderSimpleEvent({ time, icon, iconSvg, text }) {
+    return `
+      <div class="timeline-event simple">
+        <div class="timeline-axis">
+          <div class="timeline-line"></div>
+          <div class="timeline-dot completed"></div>
+        </div>
+        <div class="event-content">
+          <div class="event-timestamp">${time}</div>
+          <div class="simple-event">
+            <div class="simple-event-icon ${icon}">${iconSvg}</div>
+            <div class="simple-event-text">${text}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * 渲染轮次执行事件 (带模型徽章网格)
+   */
+  renderRoundExecutionEvent(event, time, isLatest) {
+    const modelCount = event.models?.length || 0;
+    const runningCount = event.models?.filter(m => m.status === 'running').length || 0;
+    const completedCount = event.models?.filter(m => m.status === 'completed').length || 0;
+    const errorCount = event.models?.filter(m => m.status === 'error').length || 0;
+
+    // 确定整体状态
+    let statusClass = 'pending';
+    let statusText = 'Waiting';
+    let cardClass = '';
+    let dotClass = '';
+
+    if (runningCount > 0) {
+      statusClass = 'running';
+      statusText = `${runningCount} Running`;
+      cardClass = 'active';
+      dotClass = 'active';
+    } else if (errorCount > 0 && completedCount + errorCount === modelCount) {
+      statusClass = 'completed';
+      statusText = 'Completed';
+      cardClass = 'completed';
+      dotClass = 'completed';
+    } else if (completedCount === modelCount) {
+      statusClass = 'completed';
+      statusText = 'All Completed';
+      cardClass = 'completed';
+      dotClass = 'completed';
+    }
+
+    // 生成模型徽章网格
+    const badgeGridHtml = event.models?.map(m => this.renderModelBadge(m)).join('') || '';
+
+    return `
+      <div class="timeline-event">
+        <div class="timeline-axis">
+          <div class="timeline-line"></div>
+          <div class="timeline-dot ${dotClass}"></div>
+        </div>
+        <div class="event-content">
+          <div class="event-timestamp">${time}</div>
+          <div class="event-card ${cardClass}">
+            <div class="event-header">
+              <div>
+                <span class="event-type">Round ${event.round}</span>
+                <span class="event-mode">${this.getModeName(event.mode)}</span>
+              </div>
+              <span class="event-status ${statusClass}">${statusText}</span>
+            </div>
+            <div class="model-badge-grid">
+              ${badgeGridHtml}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * 渲染模型状态徽章
+   */
+  renderModelBadge(model) {
+    const statusClass = model.status === 'running' ? 'running' :
+                        model.status === 'completed' ? 'completed' :
+                        model.status === 'error' ? 'error' : 'pending';
+
+    let iconHtml = '';
+    if (model.status === 'running') {
+      iconHtml = '<span class="badge-pulse"></span>';
+    } else if (model.status === 'completed') {
+      iconHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>`;
+    } else if (model.status === 'error') {
+      iconHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>`;
+    } else {
+      iconHtml = '<span class="badge-dot"></span>';
+    }
+
+    const hostBadge = model.isHost ? '<span class="badge-host" title="Host">H</span>' : '';
+    const displayName = this.shortenModelName(model.modelName);
+
+    return `
+      <div class="model-badge ${statusClass}" title="${Utils.escapeHtml(model.modelName)}: ${model.status}">
+        <span class="badge-icon">${iconHtml}</span>
+        <span class="badge-name">${Utils.escapeHtml(displayName)}</span>
+        ${hostBadge}
+      </div>
+    `;
+  }
+
+  /**
+   * 缩短模型名称显示
+   */
+  shortenModelName(name) {
+    if (!name) return 'Unknown';
+    // 提取主要模型名称
+    const shortNames = {
+      'gpt-4': 'GPT-4',
+      'gpt-4o': 'GPT-4o',
+      'gpt-4o-mini': 'GPT-4o mini',
+      'claude-3-5-sonnet': 'Claude 3.5',
+      'claude-3-opus': 'Claude 3',
+      'claude-3-5-haiku': 'Claude Haiku',
+      'deepseek-chat': 'DeepSeek',
+      'deepseek-coder': 'DeepSeek Coder',
+      'glm-4': 'GLM-4',
+      'glm-4-plus': 'GLM-4+',
+      'glm-4-flash': 'GLM-4F',
+      'glm-4v': 'GLM-4V',
+      'kimi': 'Kimi',
+      'qwen': 'Qwen',
+      'qwq': 'QwQ'
+    };
+
+    for (const [key, value] of Object.entries(shortNames)) {
+      if (name.toLowerCase().includes(key.toLowerCase())) {
+        return value;
+      }
+    }
+
+    // 如果超过8个字符，截断显示（改小以适应3列网格）
+    if (name.length > 8) {
+      return name.substring(0, 8) + '...';
+    }
+
+    return name;
+  }
+
+  /**
+   * 获取模式名称 - 可读版本
    */
   getModeName(mode) {
     const names = {
-      'brainstorm': 'BRAIN',
-      'round-table': 'TABLE',
-      'debate': 'DEBATE'
+      'brainstorm': 'Brainstorm',
+      'round-table': 'Round Table',
+      'debate': 'Debate'
     };
-    return names[mode] || mode.toUpperCase();
+    return names[mode] || mode.charAt(0).toUpperCase() + mode.slice(1);
   }
 
   /**
@@ -794,9 +856,10 @@ class BottomPanel extends HTMLElement {
       </div>
     `;
 
-    // 时间线日志
-    const timelineHtml = events.length > 0
-      ? events.map(e => this.renderTimelineEvent(e)).join('')
+    // 时间线日志 - 按时间顺序显示，最新的在底部
+    const sortedEvents = events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const timelineHtml = sortedEvents.length > 0
+      ? sortedEvents.map((e, index) => this.renderTimelineEvent(e, index === sortedEvents.length - 1)).join('')
       : '<div class="timeline-empty">Waiting for events...</div>';
 
     content.innerHTML = `

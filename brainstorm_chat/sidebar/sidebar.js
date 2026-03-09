@@ -888,39 +888,51 @@
             { status: message.status, progress: message.progress, response: message.response, error: message.error, isHost: message.isHost }
           );
 
-          // 添加独立事件到时间线
+          // 更新轮次执行事件到时间线（合并显示，避免混乱）
           const discussion = StateManager.state.discussions.find(d => d.id === discussionId);
           if (discussion) {
             if (!discussion.timelineEvents) {
               discussion.timelineEvents = [];
             }
 
-            // 根据状态添加不同类型的事件
-            let eventType, eventStatus;
-            if (message.status === 'running') {
-              eventType = 'model-running';
-              eventStatus = 'running';
-            } else if (message.status === 'completed') {
-              eventType = 'model-completed';
-              eventStatus = 'done';
-            } else if (message.status === 'error') {
-              eventType = 'model-error';
-              eventStatus = 'failed';
+            // 获取当前轮次
+            const currentRound = discussion.currentRound || 1;
+            const eventKey = `round-exec-${currentRound}`;
+
+            // 查找是否已有当前轮次的执行事件
+            let roundEvent = discussion.timelineEvents.find(e => e.eventKey === eventKey);
+
+            // 获取模型信息
+            const model = discussion.models?.find(m => m.modelId === message.modelId);
+            const modelName = model?.name || message.modelId;
+
+            if (!roundEvent) {
+              // 创建新的轮次执行事件
+              roundEvent = {
+                type: 'round-execution',
+                eventKey: eventKey,
+                timestamp: new Date().toISOString(),
+                round: currentRound,
+                mode: discussion.currentMode || discussion.modes?.[discussion.currentModeIndex || 0] || 'brainstorm',
+                models: []
+              };
+              discussion.timelineEvents.push(roundEvent);
             }
 
-            if (eventType) {
-              // 获取模型名称
-              const model = discussion.models?.find(m => m.modelId === message.modelId);
-              const modelName = model?.name || message.modelId;
+            // 更新或添加模型状态
+            const existingModelIndex = roundEvent.models.findIndex(m => m.modelId === message.modelId);
+            const modelStatus = {
+              modelId: message.modelId,
+              modelName: modelName,
+              status: message.status, // running, completed, error, pending
+              isHost: message.isHost || false,
+              timestamp: new Date().toISOString()
+            };
 
-              discussion.timelineEvents.push({
-                type: eventType,
-                timestamp: new Date().toISOString(),
-                modelId: message.modelId,
-                modelName: modelName,
-                status: eventStatus,
-                isHost: message.isHost
-              });
+            if (existingModelIndex >= 0) {
+              roundEvent.models[existingModelIndex] = modelStatus;
+            } else {
+              roundEvent.models.push(modelStatus);
             }
           }
 
