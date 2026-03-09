@@ -43,7 +43,6 @@
   /* 渐变 */
   --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #38BDF8 100%);
   --gradient-header: linear-gradient(135deg, var(--card-bg) 0%, #F1F5F9 100%);
-  --gradient-accent: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
 }
 
 /* 深色模式 */
@@ -958,7 +957,7 @@ body {
   font-size: 11px;
   font-weight: 500;
   color: white;
-  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, #38BDF8 100%);
   padding: 3px 10px;
   border-radius: 10px;
 }
@@ -1195,6 +1194,21 @@ body {
   margin: 0 auto 16px;
   background: #F1F5F9;
   border-radius: 50%;
+}
+
+/* 文档预览工具栏 */
+.doc-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  margin-bottom: 8px;
+}
+
+.doc-toolbar .btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
 }
 
 /* 文档预览 */

@@ -692,7 +692,11 @@
     if (activeDiscussions.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-icon">💬</div>
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
           <div class="empty-text">暂无进行中的讨论</div>
           <div class="empty-subtext">输入需求开始一个新的讨论</div>
         </div>
