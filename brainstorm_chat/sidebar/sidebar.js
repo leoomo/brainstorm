@@ -949,6 +949,18 @@
             // 将主持人汇总添加到最后一条消息
             const lastMessage = hostDiscussion.messages[hostDiscussion.messages.length - 1];
             lastMessage.hostSummary = message.summary;
+
+            // 更新主持人模型状态为 completed
+            if (hostDiscussion.models && message.summary?.model) {
+              const hostModel = hostDiscussion.models.find(m =>
+                m.name === message.summary.model || m.modelId === message.summary.model
+              );
+              if (hostModel) {
+                hostModel.status = 'completed';
+                hostModel.progress = 100;
+              }
+            }
+
             console.log('[Sidebar] HOST_SUMMARY - 主持人汇总完成:', {
               discussionId,
               model: message.summary?.model,
