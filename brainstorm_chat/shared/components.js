@@ -557,7 +557,7 @@ class BottomPanel extends HTMLElement {
         };
         return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
       }
-      return timeA - timeB;
+      return timeB - timeA;
     });
   }
 

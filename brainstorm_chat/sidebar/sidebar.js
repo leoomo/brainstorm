@@ -912,10 +912,7 @@
               round: message.round,
               responses: message.results
             });
-            // 更新轮次 - 不超过总轮次
-            const totalRounds = roundDiscussion.totalRounds || roundDiscussion.modes?.length || 1;
-            const newRound = Math.min(message.round + 1, totalRounds);
-            roundDiscussion.currentRound = newRound;
+            // 不在这里更新 currentRound，下一轮开始时会通过 ROUND_START 更新
             roundDiscussion.updatedAt = new Date().toISOString();
 
             // 更新所有模型状态为 completed
