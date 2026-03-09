@@ -1974,11 +1974,74 @@ bottom-panel[data-state="fullscreen"] {
   height: 100vh;
   top: 0;
   z-index: 1000;
+  background: var(--bg-color);
+  border-top: none;
+  box-shadow: none;
 }
 
 /* 全屏时显示内容 */
 bottom-panel[data-state="fullscreen"] .panel-content {
   display: block;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+/* 全屏时的时间线容器 */
+bottom-panel[data-state="fullscreen"] .discussion-timeline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 全屏时的 header */
+bottom-panel[data-state="fullscreen"] .timeline-header {
+  padding: 12px 20px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 全屏时的时间线日志区域 */
+bottom-panel[data-state="fullscreen"] .timeline-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  background: var(--bg-color);
+}
+
+/* 全屏时的面板头部 */
+bottom-panel[data-state="fullscreen"] .panel-header {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
+  height: 52px;
+}
+
+/* 全屏时的全屏按钮 - 改为退出全屏 */
+bottom-panel[data-state="fullscreen"] .panel-fullscreen {
+  background: var(--primary-color);
+  color: white;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* 全屏时的时间线事件 - 更大的间距和更好的可读性 */
+bottom-panel[data-state="fullscreen"] .timeline-event {
+  padding: 12px 16px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+bottom-panel[data-state="fullscreen"] .event-header {
+  margin-bottom: 8px;
+}
+
+/* 全屏时的拖拽手柄隐藏 */
+bottom-panel[data-state="fullscreen"] .panel-drag-handle {
+  display: none;
 }
 
 /* 内部 .bottom-panel div 样式 */
