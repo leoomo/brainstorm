@@ -64,6 +64,7 @@
     modelStatus: document.getElementById('model-status'),
     roundIndicator: document.getElementById('round-indicator'),
     discussionMessages: document.getElementById('discussion-messages'),
+    discussionDocument: document.getElementById('discussion-document'),
     continueBtn: document.getElementById('continue-btn'),
     finishBtn: document.getElementById('finish-btn'),
 
@@ -1094,6 +1095,10 @@
               timestamp: new Date().toISOString(),
               status: 'completed'
             });
+
+            // 自动生成文档（后台异步进行）
+            generateDocumentAsync(completedDiscussion);
+
             StateManager.saveDiscussions();
             // 如果当前正在查看这个讨论，更新面板
             if (StateManager.state.activeDiscussionId === discussionId) {
@@ -1101,7 +1106,7 @@
             }
           }
           renderDashboard();
-          showToast('讨论完成！', 'success');
+          showToast('讨论完成！文档生成中...', 'success');
           break;
         }
 
@@ -1146,6 +1151,37 @@
           break;
       }
     });
+  }
+
+  // 异步生成文档（后台进行，不阻塞 UI）
+  async function generateDocumentAsync(discussion) {
+    if (!discussion || discussion.finalDoc) return; // 已有文档则跳过
+
+    const messages = discussion.messages.flatMap(m => m.responses.map(r => ({
+      model: r.model,
+      content: r.content
+    })));
+
+    if (!messages.length) return;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'GENERATE_DOCUMENT',
+        data: {
+          messages,
+          requirement: discussion.requirement
+        }
+      });
+
+      if (response?.data?.document) {
+        // 更新讨论对象的 finalDoc
+        discussion.finalDoc = response.data.document;
+        StateManager.saveDiscussions();
+        console.log('[Export] 文档自动生成完成');
+      }
+    } catch (error) {
+      console.error('[Export] 自动生成文档失败:', error);
+    }
   }
 
   // 导出讨论文档
@@ -1477,6 +1513,19 @@
     elements.continueBtn.addEventListener('click', continueDiscussion);
     elements.finishBtn.addEventListener('click', generateDocument);
 
+    // 标签页切换
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        // 切换按钮状态
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // 切换内容显示
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`discussion-${tabName}`).classList.add('active');
+      });
+    });
+
     // 配置界面
     elements.configBackBtn.addEventListener('click', () => switchView('main'));
     elements.addModelBtn.addEventListener('click', () => openConfigModal());
@@ -1528,6 +1577,10 @@
         break;
       case 'discussion':
         elements.discussionView.classList.add('active');
+        // 如果已有文档，显示在标签页中
+        if (state.currentDiscussion?.finalDoc) {
+          elements.discussionDocument.innerHTML = marked.parse(state.currentDiscussion.finalDoc);
+        }
         break;
       case 'config':
         elements.configView.classList.add('active');
@@ -2173,9 +2226,21 @@
 
       if (response && response.type === 'DOCUMENT_GENERATED') {
         state.currentDiscussion.finalDoc = response.data.document;
-        elements.documentContent.innerHTML = marked.parse(response.data.document);
-        switchView('document');
+
+        // 显示在标签页中（而不是跳转到 document 视图）
+        elements.discussionDocument.innerHTML = marked.parse(response.data.document);
+
+        // 切换到文档标签页
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.tab-btn[data-tab="document"]').classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        elements.discussionDocument.classList.add('active');
+
+        // 保存到存储
+        StateManager.saveDiscussions();
+
         elements.exportBtn.disabled = false;
+        showToast('文档生成成功！', 'success');
       }
     } catch (error) {
       showToast('生成文档失败: ' + error.message, 'error');
@@ -2184,13 +2249,26 @@
 
   // 导出当前讨论
   function exportCurrentDiscussion() {
-    const content = state.messages.map(m => `## ${m.model}\n\n${m.content}`).join('\n\n---\n\n');
-    downloadFile('discussion.md', content);
+    // 判断当前激活的标签页
+    const isDocumentTab = document.querySelector('.tab-btn[data-tab="document"]').classList.contains('active');
+
+    if (isDocumentTab && state.currentDiscussion?.finalDoc) {
+      // 导出文档
+      downloadFile('product-document.md', state.currentDiscussion.finalDoc);
+      showToast('文档已下载', 'success');
+    } else {
+      // 导出讨论消息
+      const content = state.messages.map(m => `## ${m.model}\n\n${m.content}`).join('\n\n---\n\n');
+      downloadFile('discussion.md', content);
+      showToast('讨论消息已下载', 'success');
+    }
   }
 
   // 导出文档
   function exportDocument() {
-    downloadFile('product-document.md', state.currentDiscussion.finalDoc);
+    if (state.currentDiscussion?.finalDoc) {
+      downloadFile('product-document.md', state.currentDiscussion.finalDoc);
+    }
   }
 
   // 保存到历史
@@ -2482,15 +2560,52 @@
     elements.historyList.querySelectorAll('.history-item').forEach(item => {
       const id = item.dataset.id;
 
-      item.querySelector('.view-doc-btn').addEventListener('click', (e) => {
+      item.querySelector('.view-doc-btn').addEventListener('click', async (e) => {
         e.stopPropagation();
         const history = state.history.find(h => h.id === id);
-        if (history && history.finalDoc) {
+        if (!history) return;
+
+        // 如果已有文档，直接显示
+        if (history.finalDoc) {
           state.currentDiscussion = history;
           elements.documentContent.innerHTML = marked.parse(history.finalDoc);
           switchView('document');
         } else {
-          showToast('该记录无文档', 'error');
+          // 动态生成文档
+          showToast('正在生成文档...', 'info');
+          try {
+            const messages = history.messages?.flatMap(m => m.responses.map(r => ({
+              model: r.model,
+              content: r.content
+            }))) || [];
+
+            if (!messages.length) {
+              showToast('无讨论内容可生成文档', 'error');
+              return;
+            }
+
+            const response = await chrome.runtime.sendMessage({
+              type: 'GENERATE_DOCUMENT',
+              data: {
+                messages,
+                requirement: history.requirement
+              }
+            });
+
+            if (response?.data?.document) {
+              // 保存生成的文档
+              history.finalDoc = response.data.document;
+              await StateManager.saveHistory();
+
+              // 显示文档
+              state.currentDiscussion = history;
+              elements.documentContent.innerHTML = marked.parse(history.finalDoc);
+              switchView('document');
+              showToast('文档生成成功', 'success');
+            }
+          } catch (error) {
+            showToast('生成文档失败: ' + error.message, 'error');
+          }
         }
       });
 
