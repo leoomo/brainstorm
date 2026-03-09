@@ -990,6 +990,15 @@
             });
             // 更新当前轮次
             roundStartDiscussion.currentRound = message.round;
+
+            // 重置所有模型状态为 pending
+            if (roundStartDiscussion.models) {
+              roundStartDiscussion.models.forEach(model => {
+                model.status = 'pending';
+                model.progress = 0;
+              });
+            }
+
             StateManager.saveDiscussions();
             if (StateManager.state.activeDiscussionId === discussionId) {
               updateBottomPanelContent();
