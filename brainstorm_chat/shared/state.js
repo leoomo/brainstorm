@@ -118,7 +118,7 @@ const StateManager = {
       status: 'running', // 'running' | 'paused' | 'completed' | 'error'
       progress: 0,
       currentRound: 1,
-      totalRounds: this.state.maxRounds,
+      totalRounds: modesArray.length, // 轮次数 = 模式数
       messages: [],
       timelineEvents: [
         // 初始化时间线事件

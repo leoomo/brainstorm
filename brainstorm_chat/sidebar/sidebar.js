@@ -1836,7 +1836,7 @@
           modes: state.discussionModes, // 传递模式数组
           currentModeIndex: 0, // 从第一个模式开始
           models: selectedConfigs,
-          totalRounds: state.maxRounds,
+          totalRounds: state.discussionModes.length, // 轮次数 = 模式数
           hostModel: hostConfig // 主持人配置
         }
       });
