@@ -449,22 +449,19 @@ class BottomPanel extends HTMLElement {
     const hasStoredEvents = discussion.timelineEvents && discussion.timelineEvents.length > 0;
     if (hasStoredEvents) {
       events.push(...discussion.timelineEvents);
-    }
-
-    // 添加讨论启动事件（仅当没有预存储事件时）
-    if (!hasStoredEvents) {
+    } else {
+      // 没有预存储事件时，从消息历史重建
       events.push({
         type: 'discussion-start',
         timestamp: discussion.createdAt,
         title: discussion.title
       });
-    }
 
-    // 基于消息历史重建时间线
-    let lastMode = null;
-    let lastRound = 0;
+      // 基于消息历史重建时间线
+      let lastMode = null;
+      let lastRound = 0;
 
-    messages.forEach(msg => {
+      messages.forEach(msg => {
       const msgTime = msg.timestamp || discussion.updatedAt;
       const msgMode = msg.mode;
       const msgRound = msg.round;
@@ -522,6 +519,7 @@ class BottomPanel extends HTMLElement {
         });
       }
     });
+    }
 
     // 添加当前模型状态
     // 使用一个稍晚的时间戳，确保在时间相同时 model-status 排在其他事件之后
