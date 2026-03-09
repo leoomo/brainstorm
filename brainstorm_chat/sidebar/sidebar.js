@@ -916,6 +916,15 @@
             const newRound = Math.min(message.round + 1, totalRounds);
             roundDiscussion.currentRound = newRound;
             roundDiscussion.updatedAt = new Date().toISOString();
+
+            // 更新所有模型状态为 completed
+            if (roundDiscussion.models) {
+              roundDiscussion.models.forEach(model => {
+                model.status = 'completed';
+                model.progress = 100;
+              });
+            }
+
             console.log('[Sidebar] ROUND_COMPLETE - 更新轮次:', {
               discussionId,
               completedRound: message.round,
