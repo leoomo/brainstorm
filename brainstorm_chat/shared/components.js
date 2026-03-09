@@ -524,9 +524,12 @@ class BottomPanel extends HTMLElement {
     // 添加当前模型状态
     // 使用一个稍晚的时间戳，确保在时间相同时 model-status 排在其他事件之后
     const baseTime = new Date(discussion.updatedAt).getTime();
+    console.log('[BottomPanel] 处理模型状态:', models.map(m => ({ name: m.name, status: m.status, progress: m.progress, isHost: m.isHost })));
     models.forEach((model, index) => {
       // 只添加正在运行或有特殊状态的模型
-      if (model.status === 'running' || model.progress > 0) {
+      const shouldAdd = model.status === 'running' || model.progress > 0;
+      console.log('[BottomPanel] 检查模型:', model.name, 'status:', model.status, 'progress:', model.progress, 'shouldAdd:', shouldAdd);
+      if (shouldAdd) {
         events.push({
           type: 'model-status',
           timestamp: new Date(baseTime + 1000 + index * 10), // +1秒确保排在其他事件后
@@ -729,6 +732,7 @@ class BottomPanel extends HTMLElement {
 
     console.log('[BottomPanel] 生成时间线', {
       modelsCount: models.length,
+      models: models.map(m => ({ name: m.name, status: m.status, progress: m.progress, isHost: m.isHost })),
       eventsCount: events.length,
       currentRound,
       totalRounds,

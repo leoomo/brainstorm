@@ -230,8 +230,9 @@ const StateManager = {
       return null;
     }
 
+    console.log('[StateManager] 更新前模型状态:', { modelId: model.modelId, name: model.name, status: model.status, progress: model.progress });
     Object.assign(model, statusUpdate);
-    console.log('[StateManager] 模型状态已更新:', { modelId, status: model.status, progress: model.progress });
+    console.log('[StateManager] 模型状态已更新:', { modelId, name: model.name, status: model.status, progress: model.progress, isHost: model.isHost });
 
     // 重新计算整体进度
     const totalProgress = discussion.models.reduce((sum, m) => sum + (m.progress || 0), 0);

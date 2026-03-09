@@ -886,7 +886,8 @@
             modelId: message.modelId,
             status: message.status,
             progress: message.progress,
-            isHost: message.isHost
+            isHost: message.isHost,
+            responseLength: message.response?.length
           });
           StateManager.updateModelStatus(
             discussionId,
