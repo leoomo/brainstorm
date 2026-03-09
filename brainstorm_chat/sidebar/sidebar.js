@@ -929,10 +929,24 @@
               timestamp: new Date().toISOString()
             };
 
+            console.log('[Sidebar] MODEL_STATUS_UPDATE 更新模型状态:', {
+              modelId: message.modelId,
+              modelName: modelName,
+              status: message.status,
+              isHost: message.isHost,
+              currentRound: currentRound,
+              eventKey: eventKey,
+              existingModelIndex: existingModelIndex,
+              roundEventModelsCount: roundEvent.models.length,
+              roundEventModels: roundEvent.models.map(m => ({ modelId: m.modelId, modelName: m.modelName, status: m.status }))
+            });
+
             if (existingModelIndex >= 0) {
               roundEvent.models[existingModelIndex] = modelStatus;
+              console.log('[Sidebar] 已更新现有模型状态:', { modelId: message.modelId, status: message.status });
             } else {
               roundEvent.models.push(modelStatus);
+              console.log('[Sidebar] 已添加新模型状态:', { modelId: message.modelId, status: message.status });
             }
           }
 

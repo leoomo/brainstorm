@@ -639,6 +639,16 @@ class BottomPanel extends HTMLElement {
     const completedCount = event.models?.filter(m => m.status === 'completed').length || 0;
     const errorCount = event.models?.filter(m => m.status === 'error').length || 0;
 
+    console.log('[BottomPanel] renderRoundExecutionEvent:', {
+      round: event.round,
+      mode: event.mode,
+      modelCount,
+      runningCount,
+      completedCount,
+      errorCount,
+      models: event.models?.map(m => ({ modelId: m.modelId, modelName: m.modelName, status: m.status }))
+    });
+
     // 确定整体状态
     let statusClass = 'pending';
     let statusText = 'Waiting';
@@ -818,7 +828,13 @@ class BottomPanel extends HTMLElement {
       hasDiscussion: !!discussion,
       discussionId: discussion?.id,
       title: discussion?.title,
-      modelsCount: discussion?.models?.length
+      modelsCount: discussion?.models?.length,
+      models: discussion?.models?.map(m => ({ modelId: m.modelId, name: m.name, status: m.status })),
+      timelineEventsCount: discussion?.timelineEvents?.length,
+      timelineEvents: discussion?.timelineEvents?.filter(e => e.type === 'round-execution').map(e => ({
+        round: e.round,
+        models: e.models?.map(m => ({ modelId: m.modelId, modelName: m.modelName, status: m.status }))
+      }))
     });
 
     const content = this.querySelector('.panel-content');
