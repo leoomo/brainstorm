@@ -444,6 +444,8 @@ class BottomPanel extends HTMLElement {
     const { models = [], messages = [], currentRound = 1, totalRounds, modes = [], currentModeIndex = 0 } = discussion;
     // 如果 totalRounds 未定义，使用 modes.length（至少为1）
     const actualTotalRounds = totalRounds || modes.length || 1;
+    // 获取当前模式
+    const currentMode = modes[currentModeIndex] || 'brainstorm';
 
     // 使用预存储的时间线事件作为基础
     const hasStoredEvents = discussion.timelineEvents && discussion.timelineEvents.length > 0;
@@ -537,7 +539,10 @@ class BottomPanel extends HTMLElement {
           modelName: model.name,
           status: model.status,
           progress: model.progress,
-          isHost: model.isHost
+          isHost: model.isHost,
+          mode: currentMode,
+          currentRound: discussion.currentRound || 1,
+          totalRounds: actualTotalRounds
         });
       }
     });
@@ -621,11 +626,15 @@ class BottomPanel extends HTMLElement {
         `;
 
       case 'model-status':
+        const statusText = event.status === 'running' ? 'thinking...' : (event.status === 'completed' ? 'done' : event.status);
+        const progressBar = event.status === 'running' ? `
+          <span class="progress-text">${event.progress || 0}%</span>
+        ` : '';
         return `
           <div class="tl-event ${typeClass} ${event.status}">
             <span class="tl-time">${time}</span>
             <span class="tl-actor ${event.isHost ? 'host' : ''}">${Utils.escapeHtml(event.modelName)}</span>
-            <span class="tl-action">${this.getStatusAction(event.status, event.isHost)}</span>
+            <span class="tl-action">${statusText} ${progressBar}</span>
             <span class="tl-status ${event.status}"></span>
           </div>
         `;
@@ -678,18 +687,18 @@ class BottomPanel extends HTMLElement {
   getStatusAction(status, isHost = false) {
     if (isHost) {
       const hostActions = {
-        pending: 'waiting',
-        running: 'summarizing...',
-        completed: 'done',
-        error: 'failed'
+        pending: '[WAIT] waiting for round to complete',
+        running: '[BUSY] summarizing...',
+        completed: '[DONE] summary complete',
+        error: '[ERR] summary failed'
       };
       return hostActions[status] || status;
     }
     const actions = {
-      pending: 'waiting',
-      running: 'thinking...',
-      completed: 'done',
-      error: 'failed'
+      pending: '[WAIT] waiting to start',
+      running: '[BUSY] thinking...',
+      completed: '[DONE] response ready',
+      error: '[ERR] request failed'
     };
     return actions[status] || status;
   }

@@ -923,11 +923,9 @@
               });
             }
 
-            console.log('[Sidebar] ROUND_COMPLETE - 更新轮次:', {
+            console.log('[Sidebar] ROUND_COMPLETE:', {
               discussionId,
-              completedRound: message.round,
-              newCurrentRound: newRound,
-              totalRounds: totalRounds
+              completedRound: message.round
             });
             // 保存并通知
             StateManager.saveDiscussions();

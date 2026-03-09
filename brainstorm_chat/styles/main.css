@@ -3063,6 +3063,39 @@ bottom-panel[data-state="fullscreen"] .panel-content {
   color: var(--text-secondary);
 }
 
+/* Progress Bar */
+.progress-bar {
+  display: inline-block;
+  width: 40px;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.completed {
+  background: var(--success-color);
+}
+
+.progress-fill.error {
+  background: var(--error-color);
+}
+
+.progress-text {
+  font-size: 9px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
 /* Status Indicator */
 .tl-status {
   width: 6px;
