@@ -9,6 +9,9 @@ chrome.runtime.onInstalled.addListener(() => {
 // 运行中的讨论映射 (discussionId -> discussionController)
 const runningDiscussions = new Map();
 
+// 输出类型默认常量
+const DEFAULT_OUTPUT_TYPE = '产品需求';
+
 // 输出类型定义
 const OUTPUT_TYPES = {
   '产品需求': {
@@ -35,6 +38,16 @@ const OUTPUT_TYPES = {
     description: '接口定义、参数说明、数据结构',
     template: 'api_design'
   }
+};
+
+// 输出类型角色映射 (模块级别常量)
+const OUTPUT_TYPE_ROLES = {
+  '产品需求': '产品需求分析助手。请基于用户的需求，从你的角度补充和完善产品文档。',
+  '技术方案': '技术架构师。请基于用户需求，提供技术实现方案和架构建议。',
+  '测试用例': '测试工程师。请基于用户需求，设计测试用例和测试计划。',
+  '用户故事': '产品经理。请基于用户需求，编写用户故事和验收标准。',
+  '商业分析': '商业分析师。请基于用户需求，进行商业分析和市场研究。',
+  'API设计': 'API 设计师。请基于用户需求，设计 API 接口和数据结构。'
 };
 
 // 讨论控制器
@@ -79,7 +92,7 @@ class DiscussionController {
   async detectOutputType() {
     if (!this.hostModel) {
       // 无主持人时使用默认类型
-      this.outputType = '产品需求';
+      this.outputType = DEFAULT_OUTPUT_TYPE;
       return this.outputType;
     }
 
@@ -108,29 +121,21 @@ class DiscussionController {
       } else {
         // 未匹配到预定义类型，默认使用产品需求
         console.log('[DiscussionController] 输出类型未匹配:', detectedType, '使用默认: 产品需求');
-        this.outputType = '产品需求';
+        this.outputType = DEFAULT_OUTPUT_TYPE;
       }
 
       console.log('[DiscussionController] 输出类型识别结果:', this.outputType);
       return this.outputType;
     } catch (error) {
       console.error('[DiscussionController] 输出类型识别失败:', error);
-      this.outputType = '产品需求';
+      this.outputType = DEFAULT_OUTPUT_TYPE;
       return this.outputType;
     }
   }
 
   // 获取输出类型的角色描述
   getOutputTypeRole() {
-    const roles = {
-      '产品需求': '产品需求分析助手。请基于用户的需求，从你的角度补充和完善产品文档。',
-      '技术方案': '技术架构师。请基于用户需求，提供技术实现方案和架构建议。',
-      '测试用例': '测试工程师。请基于用户需求，设计测试用例和测试计划。',
-      '用户故事': '产品经理。请基于用户需求，编写用户故事和验收标准。',
-      '商业分析': '商业分析师。请基于用户需求，进行商业分析和市场研究。',
-      'API设计': 'API 设计师。请基于用户需求，设计 API 接口和数据结构。'
-    };
-    return roles[this.outputType] || roles['产品需求'];
+    return OUTPUT_TYPE_ROLES[this.outputType] || OUTPUT_TYPE_ROLES[DEFAULT_OUTPUT_TYPE];
   }
 
   // 暂停讨论
@@ -1198,7 +1203,7 @@ async function callMoonshot(model, systemPrompt, userPrompt) {
 
 // 文档生成器
 const DocumentGenerator = {
-  generate(messages, requirement, outputType = '产品需求') {
+  generate(messages, requirement, outputType = DEFAULT_OUTPUT_TYPE) {
     const modelContents = messages.map(m =>
       `## ${m.model} 的建议\n\n${m.content}`
     ).join('\n\n---\n\n');
@@ -1394,7 +1399,7 @@ ${extractSection(modelContents, ['限流', 'rate limit', '配额'])}
 *本文档由 AI 多模型讨论生成*`
     };
 
-    return templates[outputType] || templates['产品需求'];
+    return templates[outputType] || templates[DEFAULT_OUTPUT_TYPE];
   }
 };
 

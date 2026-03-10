@@ -5,6 +5,14 @@
   // 使用状态管理模块
   const state = StateManager.state;
 
+  // 默认输出类型常量
+  const DEFAULT_OUTPUT_TYPE = '产品需求';
+
+  // 从消息中提取输出类型
+  function extractOutputType(messages) {
+    return messages.find(m => m.outputType)?.outputType || DEFAULT_OUTPUT_TYPE;
+  }
+
   // DOM 元素
   const elements = {
     // 视图
@@ -1196,7 +1204,7 @@
     if (!messages.length) return;
 
     // 提取输出类型
-    const outputType = messages.find(m => m.outputType)?.outputType || '产品需求';
+    const outputType = extractOutputType(messages);
 
     try {
       const response = await chrome.runtime.sendMessage({
@@ -1230,7 +1238,7 @@
     })));
 
     // 提取输出类型
-    const outputType = messages.find(m => m.outputType)?.outputType || '产品需求';
+    const outputType = extractOutputType(messages);
 
     try {
       const response = await chrome.runtime.sendMessage({
@@ -2249,7 +2257,7 @@
   // 生成文档
   async function generateDocument() {
     // 提取输出类型
-    const outputType = state.messages.find(m => m.outputType)?.outputType || '产品需求';
+    const outputType = extractOutputType(state.messages);
 
     try {
       const response = await chrome.runtime.sendMessage({
