@@ -1195,12 +1195,16 @@
 
     if (!messages.length) return;
 
+    // 提取输出类型
+    const outputType = messages.find(m => m.outputType)?.outputType || '产品需求';
+
     try {
       const response = await chrome.runtime.sendMessage({
         type: 'GENERATE_DOCUMENT',
         data: {
           messages,
-          requirement: discussion.requirement
+          requirement: discussion.requirement,
+          outputType
         }
       });
 
@@ -1225,12 +1229,16 @@
       content: r.content
     })));
 
+    // 提取输出类型
+    const outputType = messages.find(m => m.outputType)?.outputType || '产品需求';
+
     try {
       const response = await chrome.runtime.sendMessage({
         type: 'GENERATE_DOCUMENT',
         data: {
           messages,
-          requirement: discussion.requirement
+          requirement: discussion.requirement,
+          outputType
         }
       });
 
@@ -2240,12 +2248,16 @@
 
   // 生成文档
   async function generateDocument() {
+    // 提取输出类型
+    const outputType = state.messages.find(m => m.outputType)?.outputType || '产品需求';
+
     try {
       const response = await chrome.runtime.sendMessage({
         type: 'GENERATE_DOCUMENT',
         data: {
           messages: state.messages,
-          requirement: state.currentDiscussion.requirement
+          requirement: state.currentDiscussion.requirement,
+          outputType
         }
       });
 

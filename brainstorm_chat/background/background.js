@@ -9,6 +9,34 @@ chrome.runtime.onInstalled.addListener(() => {
 // 运行中的讨论映射 (discussionId -> discussionController)
 const runningDiscussions = new Map();
 
+// 输出类型定义
+const OUTPUT_TYPES = {
+  '产品需求': {
+    description: '产品功能、用户需求详细说明',
+    template: 'product_requirement'
+  },
+  '技术方案': {
+    description: '技术架构、实现方案、技术选型',
+    template: 'technical'
+  },
+  '测试用例': {
+    description: '测试场景、用例设计、测试计划',
+    template: 'test_case'
+  },
+  '用户故事': {
+    description: '用户故事、验收标准、优先级',
+    template: 'user_story'
+  },
+  '商业分析': {
+    description: '商业模式、市场分析、竞品研究',
+    template: 'business'
+  },
+  'API设计': {
+    description: '接口定义、参数说明、数据结构',
+    template: 'api_design'
+  }
+};
+
 // 讨论控制器
 class DiscussionController {
   constructor(discussionId, requirement, modes, models, totalRounds, hostModel) {
@@ -27,6 +55,7 @@ class DiscussionController {
     this.status = 'running'; // 'running' | 'paused' | 'completed' | 'error' | 'cancelled'
     this.error = null;
     this.abortController = new AbortController();
+    this.outputType = null; // 输出类型，由主持人识别
 
     console.log('[DiscussionController] 构造完成', { currentMode: this.currentMode, modes: this.modes });
   }
@@ -44,6 +73,64 @@ class DiscussionController {
       'debate': '辩论评审'
     };
     return names[mode] || mode;
+  }
+
+  // 识别输出类型
+  async detectOutputType() {
+    if (!this.hostModel) {
+      // 无主持人时使用默认类型
+      this.outputType = '产品需求';
+      return this.outputType;
+    }
+
+    const typeList = Object.keys(OUTPUT_TYPES).join('、');
+    const systemPrompt = `你是讨论主持人，负责分析用户需求并确定应该生成什么类型的文档。
+
+可选的输出类型：
+- 产品需求：产品功能、用户需求详细说明
+- 技术方案：技术架构、实现方案、技术选型
+- 测试用例：测试场景、用例设计、测试计划
+- 用户故事：用户故事、验收标准、优先级
+- 商业分析：商业模式、市场分析、竞品研究
+- API设计：接口定义、参数说明、数据结构
+
+任务：分析用户需求，选择最合适的输出类型。只输出类型名称，不要输出其他内容。`;
+
+    const userPrompt = `用户需求：${this.requirement}\n\n请分析这个需求，判断应该输出什么类型的文档。只输出类型名称（如：产品需求、技术方案等）。`;
+
+    try {
+      const response = await this.callModelWithTimeout(this.hostModel, systemPrompt, userPrompt);
+      const detectedType = response.trim();
+
+      // 检查是否匹配预定义类型
+      if (OUTPUT_TYPES[detectedType]) {
+        this.outputType = detectedType;
+      } else {
+        // 未匹配到预定义类型，默认使用产品需求
+        console.log('[DiscussionController] 输出类型未匹配:', detectedType, '使用默认: 产品需求');
+        this.outputType = '产品需求';
+      }
+
+      console.log('[DiscussionController] 输出类型识别结果:', this.outputType);
+      return this.outputType;
+    } catch (error) {
+      console.error('[DiscussionController] 输出类型识别失败:', error);
+      this.outputType = '产品需求';
+      return this.outputType;
+    }
+  }
+
+  // 获取输出类型的角色描述
+  getOutputTypeRole() {
+    const roles = {
+      '产品需求': '产品需求分析助手。请基于用户的需求，从你的角度补充和完善产品文档。',
+      '技术方案': '技术架构师。请基于用户需求，提供技术实现方案和架构建议。',
+      '测试用例': '测试工程师。请基于用户需求，设计测试用例和测试计划。',
+      '用户故事': '产品经理。请基于用户需求，编写用户故事和验收标准。',
+      '商业分析': '商业分析师。请基于用户需求，进行商业分析和市场研究。',
+      'API设计': 'API 设计师。请基于用户需求，设计 API 接口和数据结构。'
+    };
+    return roles[this.outputType] || roles['产品需求'];
   }
 
   // 暂停讨论
@@ -120,7 +207,8 @@ class DiscussionController {
       this.broadcastUpdate({
         type: 'DISCUSSION_COMPLETED',
         discussionId: this.discussionId,
-        messages: this.messages
+        messages: this.messages,
+        outputType: this.outputType
       });
       runningDiscussions.delete(this.discussionId);
       return;
@@ -158,6 +246,12 @@ class DiscussionController {
     try {
       console.log(`[DiscussionController] 开始执行轮次 ${this.currentRound}, 模式: ${this.currentMode}`);
 
+      // 第一轮时识别输出类型
+      if (this.currentRound === 1 && this.currentModeIndex === 0 && !this.outputType) {
+        console.log('[DiscussionController] 第一轮开始，识别输出类型...');
+        await this.detectOutputType();
+      }
+
       // 广播当前轮次开始
       this.broadcastUpdate({
         type: 'ROUND_START',
@@ -179,7 +273,8 @@ class DiscussionController {
         round: this.currentRound,
         mode: this.currentMode,
         modeIndex: this.currentModeIndex,
-        responses: results
+        responses: results,
+        outputType: this.outputType
       });
 
       this.broadcastUpdate({
@@ -264,7 +359,8 @@ class DiscussionController {
   async executeRoundTable(requirement, models, round, previousMessages) {
     console.log(`[executeRoundTable] 开始 - 需求长度: ${requirement?.length || 0}, 模型数: ${models?.length || 0}, 轮次: ${round}`);
 
-    const systemPrompt = `你是一个产品需求分析助手。请基于用户的需求，从你的角度补充和完善产品文档。
+    const outputTypeRole = this.getOutputTypeRole();
+    const systemPrompt = `你是一个${outputTypeRole}
 
 讨论规则：
 - 这是第 ${round} 轮讨论（共${this.totalRounds}轮）
@@ -277,7 +373,7 @@ class DiscussionController {
       ? `前一轮讨论摘要：\n${previousMessages.map(m => `${m.model}: ${m.content?.substring(0, 200)}...`).join('\n\n')}`
       : '';
 
-    const userPrompt = `产品需求：\n${requirement}\n\n${context}\n\n请从你的专业角度分析这个需求，给出补充建议。`;
+    const userPrompt = `${this.outputType || '需求'}：\n${requirement}\n\n${context}\n\n请从你的专业角度分析，给出补充建议。`;
 
     const results = [];
 
@@ -320,7 +416,8 @@ class DiscussionController {
       models: models?.map(m => ({ id: m.id, name: m.name, provider: m.provider }))
     });
 
-    const systemPrompt = `你是一个创意头脑风暴助手。请针对用户需求，快速生成多个创意点子和想法。
+    const outputTypeRole = this.getOutputTypeRole();
+    const systemPrompt = `你是一个${outputTypeRole.replace('助手', '创意头脑风暴助手')}
 
 讨论规则：
 - 独立思考，不要受其他模型影响
@@ -329,7 +426,7 @@ class DiscussionController {
 
 请用 Markdown 格式输出你的创意。`;
 
-    const userPrompt = `产品需求：\n${requirement}\n\n请给出你的创意建议。`;
+    const userPrompt = `${this.outputType || '需求'}：\n${requirement}\n\n请给出你的创意建议。`;
 
     const promises = models.map(async (model) => {
       const modelId = model.id || model.name;
@@ -369,9 +466,10 @@ class DiscussionController {
   // 辩论评审模式
   async executeDebate(requirement, models, round, previousMessages) {
     const isFirstRound = previousMessages.length === 0;
+    const outputTypeRole = this.getOutputTypeRole();
 
     const systemPrompt = isFirstRound
-      ? `你是一个产品方案评审专家。请对用户需求进行全面评审。
+      ? `你是一个${outputTypeRole.replace('助手', '方案评审专家')}
 
 讨论规则：
 - 评估方案的可行性、完整性和潜在风险
@@ -379,13 +477,13 @@ class DiscussionController {
 - 重点关注：技术风险、用户体验、商业价值
 
 请用 Markdown 格式输出你的评审意见。`
-      : `你是一个产品方案评审专家。上一轮评审已经提出了以下意见：
+      : `你是一个${outputTypeRole.replace('助手', '方案评审专家')}。上一轮评审已经提出了以下意见：
 
 ${previousMessages.map(m => `- ${m.model}: ${m.content?.substring(0, 300)}...`).join('\n')}
 
 请针对这些意见，给出你的回应和补充评审。`;
 
-    const userPrompt = `产品需求：\n${requirement}\n\n请给出你的评审意见。`;
+    const userPrompt = `${this.outputType || '需求'}：\n${requirement}\n\n请给出你的评审意见。`;
 
     const results = [];
 
@@ -1100,12 +1198,14 @@ async function callMoonshot(model, systemPrompt, userPrompt) {
 
 // 文档生成器
 const DocumentGenerator = {
-  generate(messages, requirement) {
+  generate(messages, requirement, outputType = '产品需求') {
     const modelContents = messages.map(m =>
       `## ${m.model} 的建议\n\n${m.content}`
     ).join('\n\n---\n\n');
 
-    const template = `# 产品需求文档
+    // 根据输出类型选择模板
+    const templates = {
+      '产品需求': `# 产品需求文档
 
 ## 1. 需求概述
 
@@ -1133,10 +1233,168 @@ ${extractSection(modelContents, ['风险', '问题', '建议', '注意事项'])}
 
 ---
 
-*本文档由 AI 多模型讨论生成*
-`;
+*本文档由 AI 多模型讨论生成*`,
 
-    return template;
+      '技术方案': `# 技术方案文档
+
+## 1. 需求概述
+
+${requirement}
+
+## 2. 技术架构
+
+${extractSection(modelContents, ['架构', '技术架构', 'architecture'])}
+
+## 3. 技术选型
+
+${extractSection(modelContents, ['技术选型', '选型', '技术栈'])}
+
+## 4. 核心模块设计
+
+${extractSection(modelContents, ['模块', '设计', '核心'])}
+
+## 5. 数据结构
+
+${extractSection(modelContents, ['数据', '结构', '数据库', 'schema'])}
+
+## 6. 接口设计
+
+${extractSection(modelContents, ['接口', 'API', '接口设计'])}
+
+## 7. 部署方案
+
+${extractSection(modelContents, ['部署', '运维', 'devops'])}
+
+---
+
+*本文档由 AI 多模型讨论生成*`,
+
+      '测试用例': `# 测试用例文档
+
+## 1. 测试目标
+
+${requirement}
+
+## 2. 测试范围
+
+${extractSection(modelContents, ['范围', '测试范围'])}
+
+## 3. 功能测试用例
+
+${extractSection(modelContents, ['功能', '用例', '测试用例', 'test case'])}
+
+## 4. 接口测试用例
+
+${extractSection(modelContents, ['接口', 'API', '接口测试'])}
+
+## 5. 性能测试用例
+
+${extractSection(modelContents, ['性能', '压力', '性能测试'])}
+
+## 6. 边界条件
+
+${extractSection(modelContents, ['边界', '异常', '边界条件'])}
+
+---
+
+*本文档由 AI 多模型讨论生成*`,
+
+      '用户故事': `# 用户故事文档
+
+## 1. 需求概述
+
+${requirement}
+
+## 2. 用户角色
+
+${extractSection(modelContents, ['角色', '用户角色', 'user role'])}
+
+## 3. 用户故事
+
+${extractSection(modelContents, ['用户故事', 'story', '场景'])}
+
+## 4. 验收标准
+
+${extractSection(modelContents, ['验收', '标准', 'acceptance', 'AC'])}
+
+## 5. 优先级
+
+${extractSection(modelContents, ['优先级', 'priority'])}
+
+## 6. 依赖关系
+
+${extractSection(modelContents, ['依赖', 'dependencies'])}
+
+---
+
+*本文档由 AI 多模型讨论生成*`,
+
+      '商业分析': `# 商业分析文档
+
+## 1. 业务背景
+
+${requirement}
+
+## 2. 市场分析
+
+${extractSection(modelContents, ['市场', 'market', '市场分析'])}
+
+## 3. 竞品分析
+
+${extractSection(modelContents, ['竞品', '竞争', 'competitor'])}
+
+## 4. 商业模式
+
+${extractSection(modelContents, ['商业', '模式', 'business model'])}
+
+## 5. 盈利分析
+
+${extractSection(modelContents, ['盈利', '收入', 'revenue', '商业化'])}
+
+## 6. 风险与机会
+
+${extractSection(modelContents, ['风险', '机会', 'risk', 'opportunity'])}
+
+---
+
+*本文档由 AI 多模型讨论生成*`,
+
+      'API设计': `# API 设计文档
+
+## 1. 需求概述
+
+${requirement}
+
+## 2. 接口概览
+
+${extractSection(modelContents, ['接口', '概览', 'overview'])}
+
+## 3. 认证授权
+
+${extractSection(modelContents, ['认证', '授权', 'auth', 'token'])}
+
+## 4. 接口详情
+
+${extractSection(modelContents, ['接口', 'API', 'endpoint'])}
+
+## 5. 数据结构
+
+${extractSection(modelContents, ['数据', '结构', 'schema', 'model'])}
+
+## 6. 错误码
+
+${extractSection(modelContents, ['错误', 'error', 'code'])}
+
+## 7. 限流策略
+
+${extractSection(modelContents, ['限流', 'rate limit', '配额'])}
+
+---
+
+*本文档由 AI 多模型讨论生成*`
+    };
+
+    return templates[outputType] || templates['产品需求'];
   }
 };
 
@@ -1353,8 +1611,8 @@ async function handleMessage(message) {
     }
 
     case 'GENERATE_DOCUMENT': {
-      const { messages, requirement } = data;
-      const document = DocumentGenerator.generate(messages, requirement);
+      const { messages, requirement, outputType } = data;
+      const document = DocumentGenerator.generate(messages, requirement, outputType);
       return { type: 'DOCUMENT_GENERATED', data: { document } };
     }
 
